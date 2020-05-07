@@ -308,7 +308,7 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, o
         data_time.update(time.time() - end)
 
         # compute model forward
-        print("shape od the input",inp.shape)
+        #print("shape od the input",inp.shape)
         class_samples, recon_samples, mu, std = model(inp)
 
         # calculate loss
