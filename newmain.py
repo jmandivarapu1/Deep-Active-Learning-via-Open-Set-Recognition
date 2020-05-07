@@ -83,10 +83,17 @@ def main(args):
 
     # import the correct loss and training functions depending which model to optimize
     # TODO: these could easily be refactored into one function, but we kept it this way for modularity
-    vis = visdom.Visdom()
+    
     environment=args.environment
-    vis.delete_env(environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
-    vis = visdom.Visdom(env=environment)
+    cfg = {"server": "jmandivarapu1@retina.cs.gsu.edu","port": 8097}
+    vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"])
+    vis.delete_env(args.environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
+    vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"],env=environment)
+
+    # vis = visdom.Visdom()
+    
+    # vis.delete_env(environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
+    # vis = visdom.Visdom(env=environment)
     if args.train_var:
         if args.joint:
             print("came to the Joint Training")
