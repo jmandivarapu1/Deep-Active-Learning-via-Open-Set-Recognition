@@ -25,7 +25,7 @@ import visualization
 from torchsummary import summary
 
 # Custom library
-torch.cuda.set_device(1)
+# torch.cuda.set_device(1)
 
 # Execution flags
 
