@@ -212,7 +212,7 @@ def main(args):
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
         task_model=model.WRN(args.device,args.num_classes, num_colors, args)
-        print("mode",task_model)
+        # print("mode",task_model)
         
         task_model.train()
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))

@@ -611,7 +611,7 @@ class WRN(nn.Module):
 
         self.nChannels = [16, 160, 320, 512]#[64,128,256,512]#[args.wrn_embedding_size, 16 * self.widen_factor, 32 * self.widen_factor,64 * self.widen_factor]
 
-        print("total nchannekls are",self.nChannels)
+        #print("total nchannekls are",self.nChannels)
 
         assert ((self.depth - 4) % 6 == 0)
         self.num_block_layers = int((self.depth - 4) / 6)
@@ -652,7 +652,7 @@ class WRN(nn.Module):
         else:
             self.latent_feat_out = self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels
             self.latent_dim = self.latent_feat_out
-            print(self.latent_dim)
+            #print(self.latent_dim)
 
         if self.joint:
             self.classifier = nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
