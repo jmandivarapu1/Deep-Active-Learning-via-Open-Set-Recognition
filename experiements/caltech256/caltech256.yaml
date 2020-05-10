@@ -9,7 +9,7 @@ dropout: 0.0 #help='Dropout probability. '
 weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
 
 #VISDOM ENV
-environment: AL_caltech256
+environment: AL_caltech256_run2
 #DATASET
 dataset: caltech256 #help='Name of the dataset used.')
 num_classes: 256 #help='Numer of classes in the dataset')
@@ -19,7 +19,7 @@ valid_print_freq: 500
 
 # Training hyper-parameters
 epochs: 300 #, type=int, help='number of total epochs to run')
-batch-size: 128 #type=int, help='mini-batch size (default: 128)')
+batch-size: 16 #type=int, help='mini-batch size (default: 128)')
 learning_rate: 0.001 #, '--learning-rate', default=1e-3, type=float, help='initial learning rate (default: 1e-3)')
 batch_norm : 0.00005 #, '--batch-norm', default=1e-5, type=float, help='batch normalization (default 1e-5)')
 pf: 100 #, '--print-freq', default=100, type=int, help='print frequency (default: 100)')
