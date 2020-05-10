@@ -9,10 +9,10 @@ dropout: 0.0 #help='Dropout probability. '
 weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
 
 #VISDOM ENV
-environment: CF10_Encoder_ClsfrProb_run4
+environment: CF100_Encoder_ClsfrProb_run3
 #DATASET
-dataset: cifar10 #help='Name of the dataset used.')
-num_classes: 10 #help='Numer of classes in the dataset')
+dataset: cifar100 #help='Name of the dataset used.')
+num_classes: 100 #help='Numer of classes in the dataset')
 log_interval: 500 #help='Print at Certain Steps')
 print_freq: 250
 
@@ -60,7 +60,7 @@ openset_weibull_tailsize: 0.05 #, '--openset-weibull-tailsize', default=0.05, ty
 
 
 #PATHS to store the models and files
-data_path: /mnt/iscsi/data/Jay/datasets #help='Path to where the data is')
+data_path: /mnt/iscsi/data/Jay/datasets/cifar100 #help='Path to where the data is')
 beta: 1 #help='Hyperparameter for training. The parameter for VAE')
 out_path: /mnt/iscsi/data/Jay/ActiveLearning #help='Path to where the output log will be')
 log_name: 'accuracies.log' #help='Final performance of the models will be saved with this name')
