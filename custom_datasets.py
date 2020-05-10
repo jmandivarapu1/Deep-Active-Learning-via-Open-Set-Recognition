@@ -14,6 +14,15 @@ def imagenet_transformer():
                              std=[0.229, 0.224, 0.225])
     ])
 
+def caltech256_transformer():
+    transform=transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+
 def cifar10_transformer():
     return torchvision.transforms.Compose([
         #    transforms.Resize(size=(28, 28)),
@@ -73,6 +82,23 @@ class CIFAR100(Dataset):
     def __len__(self):
         return len(self.cifar100)
 
+class Caltech256(Dataset):
+    def __init__(self, path):
+        self.caltech256 =  datasets.ImageFolder(root=path,transform=transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+        ]))
+
+    def __getitem__(self, index):
+        if isinstance(index, numpy.float64):
+            index = index.astype(numpy.int64)
+        data, target = self.caltech256[index]
+
+        return data, target, index
+
+    def __len__(self):
+        return len(self.caltech256)
 
 class ImageNet(Dataset):
     def __init__(self, path):
@@ -88,19 +114,7 @@ class ImageNet(Dataset):
     def __len__(self):
         return len(self.imagenet)
 
-class Caltech256(Dataset):
-    def __init__(self, path):
-        self.imagenet = datasets.ImageFolder(root=path, transform=imagenet_transformer)
 
-    def __getitem__(self, index):
-        if isinstance(index, numpy.float64):
-            index = index.astype(numpy.int64)
-        data, target = self.imagenet[index]
-
-        return data, target, index
-
-    def __len__(self):
-        return len(self.imagenet)
 
 class Cityscapes(Dataset):
     def __init__(self, path):

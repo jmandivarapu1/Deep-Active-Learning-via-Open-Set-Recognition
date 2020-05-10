@@ -161,13 +161,12 @@ def main(args):
         #     transform=imagenet_transformer()),
         #     drop_last=False, batch_size=args.batch_size)
         train_dataset = Caltech256(args.data_path)
-        print(len(train_dataset),len(test_dataloader))
-        args.num_val = 2700
-        args.num_images = 27607
+        args.num_val = 2500
+        args.num_images = 29780
         args.budget = 1530
         args.initial_budget = 3060
         args.num_classes = 256
-        args.test=3000
+        args.test=5000
     elif args.dataset == 'Cityscapes':
         test_dataloader = data.DataLoader(
                 datasets.Cityscapes(args.data_path,download=True, transform=imagenet_transformer()),
@@ -188,27 +187,70 @@ def main(args):
         random.seed(30)
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Config: %s" % config_to_str(args))
-    all_indices = set(np.arange(args.num_images))
-    val_indices = random.sample(all_indices, args.num_val)
-    all_indices = np.setdiff1d(list(all_indices), val_indices)
-    initial_indices = random.sample(list(all_indices), args.initial_budget)
-    sampler = data.sampler.SubsetRandomSampler(initial_indices)
-    val_sampler = data.sampler.SubsetRandomSampler(val_indices)
 
-    #The below lines are only for weibull distrubution which need two validation sets to pll off
-    val_indices_set1=val_indices[0:int(len(val_indices)/2)]
-    val_indices_set2=val_indices[int(len(val_indices)/2):]
-    val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
-    val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
-    val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
-    val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
+    if args.dataset == 'caltech256':
+        '''
+        We are going to write separate loaders for caltech256 as we are reading this from images folder which doesn't 
+        have any separate folders for test/train/validation. So we read all the dataset into single dataloader then sample
+        using the indexes
+        total data 30,607
+        test data 5000 (For MNIST 50,000 train and 10,000 test)
+        validation data 2500 (10% of training data which is 0.1*25607)
+        training data 25607-2500=23607
+        '''
+        all_indices = set(np.arange(args.num_images)) # total 30,607 images
+        val_indices = random.sample(all_indices, args.num_val)#created the validation indexes which are 10% of traing
+        all_indices = np.setdiff1d(list(all_indices), val_indices)
+        test_indices = random.sample(list(all_indices), args.test)
+        all_indices = np.setdiff1d(list(all_indices), test_indices)
 
-    # dataset with labels available
-    querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
-    val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
+        #All the splits are done until above line
+        initial_indices = random.sample(list(all_indices), args.initial_budget)#Intial Budget indicies
+        #Train Sampler
+        sampler = data.sampler.SubsetRandomSampler(initial_indices)
+        #Test Sampler
+        test_sampler = data.sampler.SubsetRandomSampler(test_indices)
 
-    print("length od the Querry loader",len(querry_dataloader)*128)  
-    print("length od the Validation loader",len(val_dataloader)*128)  
+        #Validation Sampler
+        val_sampler = data.sampler.SubsetRandomSampler(val_indices)
+        val_indices_set1=val_indices[0:int(len(val_indices)/2)]
+        val_indices_set2=val_indices[int(len(val_indices)/2):]
+        val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
+        val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
+        val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
+        val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
+        # dataset with labels available
+        querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
+        test_dataloader = data.DataLoader(train_dataset, sampler=test_sampler, batch_size=args.batch_size, drop_last=False)
+        val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
+
+    else:
+        all_indices = set(np.arange(args.num_images))
+        val_indices = random.sample(all_indices, args.num_val)
+        all_indices = np.setdiff1d(list(all_indices), val_indices)
+        initial_indices = random.sample(list(all_indices), args.initial_budget)
+        sampler = data.sampler.SubsetRandomSampler(initial_indices)
+        val_sampler = data.sampler.SubsetRandomSampler(val_indices)
+        
+
+        #The below lines are only for weibull distrubution which need two validation sets to pll off
+        val_indices_set1=val_indices[0:int(len(val_indices)/2)]
+        val_indices_set2=val_indices[int(len(val_indices)/2):]
+        val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
+        val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
+        val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
+        val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
+
+        # dataset with labels available
+        querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
+        val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
+
+
+    print("length of the Querry loader",len(querry_dataloader)*128)
+    print("length of the Test loader",len(test_dataloader)*128)    
+    print("length of the Validation loader",len(val_dataloader)*128)  
+    print("length of the Validation loader I",len(val_dataloader_set1)*128) 
+    print("length of the Validation loader I",len(val_dataloader_set2)*128) 
     args.cuda = torch.cuda.is_available()
 
     solver = Solver(args, test_dataloader,val_dataloader_set1,val_dataloader_set2)
@@ -233,13 +275,17 @@ def main(args):
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
-        task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
+        if args.dataset == 'caltech256':
+            task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)
+        else:
+            task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
         print("mode",task_model)
         
         task_model.train()
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
         if args.cuda:
             task_model = task_model.cuda()
+            task_model = torch.nn.DataParallel(task_model).to(args.device)
         #summary(task_model, (3, 32, 32))
         # WeightInitializer = WeightInit(args.weight_init)
         # WeightInitializer.init_model(task_model)

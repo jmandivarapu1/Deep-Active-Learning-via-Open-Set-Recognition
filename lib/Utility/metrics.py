@@ -58,18 +58,42 @@ def accuracy(output, target, topk=(1,)):
 def testset_Accuracy(task_model,test_dataloader,args):
     task_model.eval()
     total, correct = 0, 0
-    for imgs, labels in test_dataloader:
-        if args.cuda:
-            imgs = imgs.cuda()
+    if args.dataset == 'caltech256':
+        for imgs, labels,_ in test_dataloader:
+            if args.cuda:
+                imgs = imgs.cuda()
 
-        with torch.no_grad():
-            preds, mu, std = task_model(imgs)
+            with torch.no_grad():
+                preds, mu, std = task_model(imgs)
+            
+            # print("labels sharpe",labels.shape)
+            # print("preds sharpe",preds.shape)
+            if preds.size(0)>1:
+                dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
+                #print("preds sharpe",preds.shape,preds.size(1))
+                preds=preds.view_as(dummy)
+            #print("preds sharpe",preds.shape)
+            # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
+            # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
+            preds = torch.argmax(preds[0], dim=1).cpu().numpy()
+            # print("predictions shape is",preds.shape)
+            correct += accuracy_score(labels, preds, normalize=False)
+            total += imgs.size(0)
+        return correct / total * 100
+    else:
+        for imgs, labels in test_dataloader:
+            if args.cuda:
+                imgs = imgs.cuda()
+
+            with torch.no_grad():
+                preds, mu, std = task_model(imgs)
+            
+            # print("labels sharpe",labels.shape)
+            # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
+            # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
+            preds = torch.argmax(preds[0], dim=1).cpu().numpy()
+            # print("predictions shape is",preds.shape)
+            correct += accuracy_score(labels, preds, normalize=False)
+            total += imgs.size(0)
+        return correct / total * 100
         
-        # print("labels sharpe",labels.shape)
-        # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
-        # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
-        preds = torch.argmax(preds[0], dim=1).cpu().numpy()
-        # print("predictions shape is",preds.shape)
-        correct += accuracy_score(labels, preds, normalize=False)
-        total += imgs.size(0)
-    return correct / total * 100

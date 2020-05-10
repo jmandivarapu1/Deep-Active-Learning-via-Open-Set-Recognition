@@ -5,7 +5,7 @@ from lib.Utility.metrics import accuracy
 import numpy as np
 from lib.Utility.metrics import testset_Accuracy
 from sklearn.metrics import accuracy_score
-
+import pickle
 def plot_visdom(vis,x,y,winName,plotName):
     options = dict(fillarea=False,width=400,height=400,xlabel='Iteration',ylabel='Loss',title=winName)
     if (vis.win_exists(winName)==False):
@@ -129,8 +129,13 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimiz
 
         # compute model forward
         output_samples, mu, std = model(inp)
-
+        if output_samples.size(0)>1:
+            dummy=torch.Tensor(1,output_samples.size(0)*output_samples.size(1),args.num_classes)
+            #print("classamples size", output_samples.size(0), output_samples.shape)
+            output_samples=output_samples.view_as(dummy)
         # calculate loss
+        with open('output_samples_', 'wb') as fp:pickle.dump(output_samples, fp)
+        with open('target', 'wb') as fp:pickle.dump(target, fp)
         cl_loss, kld_loss = criterion(output_samples, target, mu, std, device)
 
         # add the individual loss components together and weight the KL term.
@@ -224,7 +229,12 @@ def train_joint(Dataset, model, criterion, epoch, optimizer, writer, device, arg
 
         # compute model forward
         class_output, recon_output = model(inp)
-
+        if class_output.size(0)>1:
+            dummy=torch.Tensor(class_output.size(0),args.batch_size,args.num_classes)
+            print("classamples size", class_output.size(0), class_output.shape)
+            print("recons size", recon_output.size(0), recon_output.shape)
+            class_output=class_output.view_as(dummy)
+            recon_output=recon_output.view_as(dummy)
         # calculate loss
         class_loss, recon_loss = criterion(class_output, class_target, recon_output, recon_target)
 
@@ -314,6 +324,21 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, o
         #print("shape od the input",inp.shape)
         class_samples, recon_samples, mu, std = model(inp)
 
+        '''
+        The below if condition is because when we use the nn.Dataparallel to
+        fit the model into both the GPU. The output predictions returns by the model
+        are spitted into two tensors instead of one. Like
+        [2,64,256] instead od [1,128,256]. 
+
+        For smaller model it's fine. But for bigger model we definetly need to
+        use the nn.Dataparallel
+        '''
+        if class_samples.size(0)>1:
+            dummy=torch.Tensor(class_samples.size(0),args.batch_size,args.num_classes)
+            print("classamples size", class_samples.size(0), class_samples.shape)
+            print("recons size", recon_samples.size(0), recon_samples.shape)
+            class_samples=class_samples.view_as(dummy)
+            recon_samples=recon_samples.view_as(dummy)
         # calculate loss
         class_loss, recon_loss, kld_loss = criterion(class_samples, class_target, recon_samples, recon_target,
                                                      mu, std, device)
