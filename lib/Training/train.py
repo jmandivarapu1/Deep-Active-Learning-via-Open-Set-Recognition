@@ -3,6 +3,8 @@ import torch
 from lib.Utility.metrics import AverageMeter
 from lib.Utility.metrics import accuracy
 import numpy as np
+from lib.Utility.metrics import testset_Accuracy
+from sklearn.metrics import accuracy_score
 
 def plot_visdom(vis,x,y,winName,plotName):
     options = dict(fillarea=False,width=400,height=400,xlabel='Iteration',ylabel='Loss',title=winName)
@@ -165,7 +167,8 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimiz
                    epoch+1, i, len(Dataset), batch_time=batch_time,
                    data_time=data_time, loss=losses, cl_loss=cl_losses, top1=top1, KLD_loss=kld_losses))
             plot_visdom(visdom,iterations,loss.item(),str(int(split*100))+'_loss','loss')
-            acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
+            acc=testset_Accuracy(model,test_dataloader,args)
+            #acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
             plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
         iterations=iterations+1
 
@@ -297,7 +300,7 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, o
     model.train()
 
     end = time.time()
-
+    acc=0
     # train
     for i, (inp, target,_) in enumerate(Dataset):
         inp = inp.to(device)
@@ -340,7 +343,7 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, o
         end = time.time()
 
         # print progress
-        if i % args.print_freq == 0:
+        if iterations % args.print_freq == 0:
             print('Training: [{0}][{1}/{2}]\t' 
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
@@ -353,10 +356,12 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, o
                    data_time=data_time, loss=losses,
                    cl_loss=class_losses, top1=top1, recon_loss=recon_losses, KLD_loss=kld_losses))
 
-            print(' * Train: Loss {loss.avg:.5f} Prec@1 {top1.avg:.3f}'.format(loss=losses, top1=top1))
+            print(' ** Train: Iterations {} Loss {loss.avg:.5f} Prec@1 {top1.avg:.3f}'.format(iterations, loss=losses, top1=top1))
 
             plot_visdom(visdom,iterations,loss.item(),str(int(split*100))+'_loss','loss')
-            acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
+            #acc, val_loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
+            ts_model_copy=model
+            acc, val_loss=validate(test_dataloader, ts_model_copy, criterion, epoch, visdom, args.device, args)
             plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
         iterations=iterations+1
 

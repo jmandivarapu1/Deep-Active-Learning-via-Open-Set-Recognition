@@ -1,3 +1,7 @@
+import torch
+import pickle
+from sklearn.metrics import accuracy_score
+
 class AverageMeter:
     """
     Computes and stores the average and current value
@@ -49,3 +53,23 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+
+def testset_Accuracy(task_model,test_dataloader,args):
+    task_model.eval()
+    total, correct = 0, 0
+    for imgs, labels in test_dataloader:
+        if args.cuda:
+            imgs = imgs.cuda()
+
+        with torch.no_grad():
+            preds, mu, std = task_model(imgs)
+        
+        # print("labels sharpe",labels.shape)
+        # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
+        # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
+        preds = torch.argmax(preds[0], dim=1).cpu().numpy()
+        # print("predictions shape is",preds.shape)
+        correct += accuracy_score(labels, preds, normalize=False)
+        total += imgs.size(0)
+    return correct / total * 100

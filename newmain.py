@@ -65,7 +65,7 @@ def config_to_str(config):
 def cifar_transformer():
     return transforms.Compose([
             transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
             #                     std=[0.5, 0.5, 0.5]),
         ])
@@ -155,6 +155,30 @@ def main(args):
         args.budget = 64060
         args.initial_budget = 128120
         args.num_classes = 1000
+    elif args.dataset == 'caltech256':
+        print("path os fata is",args.data_path)
+        test_dataloader = data.DataLoader(datasets.Caltech256(args.data_path,download=True, transform=imagenet_transformer()),
+            drop_last=False, batch_size=args.batch_size)
+        train_dataset = Caltech256(args.data_path)
+        print(len(train_dataset),len(test_dataloader))
+        sys.exit()
+        args.num_val = 128120
+        args.num_images = 1281167
+        args.budget = 64060
+        args.initial_budget = 128120
+        args.num_classes = 1000
+    elif args.dataset == 'Cityscapes':
+        test_dataloader = data.DataLoader(
+                datasets.Cityscapes(args.data_path,download=True, transform=imagenet_transformer()),
+            drop_last=False, batch_size=args.batch_size)
+
+        train_dataset = Cityscapes(args.data_path)
+
+        args.num_val = 128120
+        args.num_images = 1281167
+        args.budget = 64060
+        args.initial_budget = 128120
+        args.num_classes = 1000
     else:
         raise NotImplementedError
     
@@ -211,16 +235,17 @@ def main(args):
         best_acc=0
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
-        task_model=model.WRN(args.device,args.num_classes, num_colors, args)
-        # print("mode",task_model)
+        #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
+        task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
+        print("mode",task_model)
         
         task_model.train()
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
         if args.cuda:
             task_model = task_model.cuda()
         #summary(task_model, (3, 32, 32))
-        WeightInitializer = WeightInit(args.weight_init)
-        WeightInitializer.init_model(task_model)
+        # WeightInitializer = WeightInit(args.weight_init)
+        # WeightInitializer.init_model(task_model)
         unlabeled_indices = np.setdiff1d(list(all_indices), current_indices)
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset, 
@@ -268,6 +293,7 @@ def main(args):
                                 is_best, save_path)
         accuracies.append(best_acc)
         print("All accuracies until now",accuracies)
+        with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
         sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args)
         current_indices = list(current_indices) + list(sampled_indices)

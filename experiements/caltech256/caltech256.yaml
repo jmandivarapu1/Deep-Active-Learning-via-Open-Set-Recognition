@@ -1,0 +1,138 @@
+#FOLDERS
+
+#CUDA
+cuda: True #'If training is to be done on a GPU')
+device: cpu #help='Cuda Devicce')
+workers: 4 #help='number of data loading workers (default: 4)')
+patch_size: 32  #help='patch size for crops (default: 28)')
+dropout: 0.0 #help='Dropout probability. '                                                           
+weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
+
+#VISDOM ENV
+environment: AL_caltech256
+#DATASET
+dataset: caltech256 #help='Name of the dataset used.')
+num_classes: 257 #help='Numer of classes in the dataset')
+log_interval: 500 #help='Print at Certain Steps')
+print_freq: 500
+valid_print_freq: 500
+
+# Training hyper-parameters
+epochs: 300 #, type=int, help='number of total epochs to run')
+batch-size: 128 #type=int, help='mini-batch size (default: 128)')
+learning_rate: 0.001 #, '--learning-rate', default=1e-3, type=float, help='initial learning rate (default: 1e-3)')
+batch_norm : 0.00005 #, '--batch-norm', default=1e-5, type=float, help='batch normalization (default 1e-5)')
+pf: 100 #, '--print-freq', default=100, type=int, help='print frequency (default: 100)')
+num_adv_steps: 11 #help='Number of adversary steps taken for every task model step')
+num_ML_steps: 10 #help='Number of VAE steps taken for every task model step')
+adversary_param: default=1 #help='Hyperparameter for training. lambda2 in the paper')
+
+
+#Sampler Stratgies
+sameIndexs: False #help='Everytime It will be the same experiment')
+method: True #help='Helps in picking the sampler')
+sampler: classifierProbability #help='Helps in picking the sampler')
+samplerMethod: classifierProbability,LatentMeanDistance,WiebullOutlierProbs,Entropy #help='Helps in picking the sampler')
+samplePerClass: False #help='Helps in picking either samples per class or overall')
+
+
+#ARCHITECUTRE
+batch_size: 128 #help='Batch size used for training and testing')
+train_epochs: 30 #help='Number of training epochs')
+latent_dim: 25088 #help='The dimensionality of the VAE latent dimension')
+
+
+# Architecture and weight-init
+joint: True #type=bool,help='construct a joint model, i.e. including classifier and decoder')
+train_var: True #type=bool,help='Construct and train variational architecture (default: False)')
+weight_init: kaiming-normal #help='weight-initialization scheme (default: kaiming-normal)')
+wrn_depth: 16 #type=int,help='amount of layers in the wide residual network (default: 16)')
+wrn_widen_factor: 10 #type=int,elp='width factor of the wide residual network (default: 10)')
+wrn_embedding_size: 16 #help='number of output channels in the first wrn layer if widen factor is not being''applied to the first layer (default: 16)')
+
+# Variational parameters
+var_latent_dim: 60 #type=int, help='Dimensionality of latent space')
+var_beta: 0.1 #type=float, help='weight term for KLD loss (default: 0.1)')
+var_samples: 1 #type=int,help='number of samples for the expectation in variational training (default: 1)')
+model_samples: 1 #type=int,help='Number of stochastic forward inference passes to compute for e.g. MC dropout (default: 1)')
+openset_datasets: cifar10,FashionMNIST,AudioMNIST,KMNIST,CIFAR10,CIFAR100,SVHN #help='name of openset datasets')
+distance_function: cosine #', help='Openset distance function (default: cosine) '                                                                    'choice of euclidean|cosine|mix')
+openset_weibull_tailsize: 0.05 #, '--openset-weibull-tailsize', default=0.05, type=float,
+
+
+#PATHS to store the models and files
+data_path: /mnt/iscsi/data/Jay/datasets/ #help='Path to where the data is')
+beta: 1 #help='Hyperparameter for training. The parameter for VAE')
+out_path: /mnt/iscsi/data/Jay/ActiveLearning #help='Path to where the output log will be')
+log_name: 'accuracies.log' #help='Final performance of the models will be saved with this name')
+
+
+# Resuming training
+resume: '' # default='', type=str, help='path to model to load/resume from(default: none). ''Also for stand-alone openset outlier evaluation script')
+# Open set standalone script
+# Open set arguments
+
+
+
+
+
+
+
+
+
+
+
+
+#                         help='tailsize in percent of data (float in range [0, 1]. Default: 0.05')
+# # net architecture
+# architecture: vgg16
+
+# # log and checkpoint
+# data_path: ./data
+# ckpt_path: ./
+# ckpt_name: vgg19
+
+# # datasets
+# num_classes: 10
+# dataset: cifar10 
+
+# # training parameters
+# use_gpu: True
+# input_size: 32
+# epochs: 250
+# batch_size: 128
+# test_batch: 200
+# eval_freq: 2
+# workers: 4
+
+# # optimizer
+# optimize:
+#   momentum: 0.9
+#   weight_decay: 0.0001
+#   nesterov: True
+
+# # regularization
+# mixup: False
+# mixup_alpha: 0.4
+
+# augmentation:
+#   normalize: True
+#   random_crop: True
+#   random_horizontal_filp: True
+#   cutout: False
+#  #holes: 1
+#   length: 8
+
+# # learning rate scheduler
+# lr_scheduler:
+#   # type: STEP or COSINE o #hTD
+#   type: STEP    
+#   base_lr: 0.1
+#   # only for STEP
+#   lr_epochs: [100, 150, 200] 
+#   lr_mults: 0.1
+#   # fo #hTD and COSINE
+#   min_lr: 0.0
+#   # only fo #hTD
+#   lower_bound: -6.0
+#   upper_bound: 3.0 

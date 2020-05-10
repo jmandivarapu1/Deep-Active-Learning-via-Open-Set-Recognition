@@ -304,7 +304,7 @@ def eval_var_openset_dataset(model, data_loader, num_classes, device,args, laten
 
             # sampling the model, then z and classifying
             for k in range(model_var_samples):
-                encoded_mu, encoded_std = model.encode(inputs)
+                encoded_mu, encoded_std,_ = model.encode(inputs)
 
                 for i in range(latent_var_samples):
                     z = model.reparameterize(encoded_mu, encoded_std)

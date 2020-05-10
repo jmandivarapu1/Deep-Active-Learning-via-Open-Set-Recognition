@@ -16,21 +16,20 @@ def imagenet_transformer():
 
 def cifar10_transformer():
     return torchvision.transforms.Compose([
-           transforms.RandomCrop(32, padding=4),
+        #    transforms.Resize(size=(28, 28)),
+           transforms.RandomCrop(32, padding=3),
            torchvision.transforms.RandomHorizontalFlip(),
            torchvision.transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        #    transforms.Normalize(mean=[0.5, 0.5, 0.5,],
-        #                         std=[0.5, 0.5, 0.5]),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        #    transforms.Normalize(mean=[0.5, 0.5, 0.5,],std=[0.5, 0.5, 0.5]),
        ])
-
 
 def cifar100_transformer():
     return torchvision.transforms.Compose([
-        #    transforms.RandomCrop(32, padding=4),
+           transforms.RandomCrop(32, padding=4),
            torchvision.transforms.RandomHorizontalFlip(),
            torchvision.transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         #    transforms.Normalize(mean=[0.5, 0.5, 0.5,],
         #                         std=[0.5, 0.5, 0.5]),
        ])
@@ -76,6 +75,34 @@ class CIFAR100(Dataset):
 
 
 class ImageNet(Dataset):
+    def __init__(self, path):
+        self.imagenet = datasets.ImageFolder(root=path, transform=imagenet_transformer)
+
+    def __getitem__(self, index):
+        if isinstance(index, numpy.float64):
+            index = index.astype(numpy.int64)
+        data, target = self.imagenet[index]
+
+        return data, target, index
+
+    def __len__(self):
+        return len(self.imagenet)
+
+class Caltech256(Dataset):
+    def __init__(self, path):
+        self.imagenet = datasets.ImageFolder(root=path, transform=imagenet_transformer)
+
+    def __getitem__(self, index):
+        if isinstance(index, numpy.float64):
+            index = index.astype(numpy.int64)
+        data, target = self.imagenet[index]
+
+        return data, target, index
+
+    def __len__(self):
+        return len(self.imagenet)
+
+class Cityscapes(Dataset):
     def __init__(self, path):
         self.imagenet = datasets.ImageFolder(root=path, transform=imagenet_transformer)
 
