@@ -378,7 +378,7 @@ def eval_var_openset_dataset(model, data_loader, num_classes, device,args, laten
             'querry_pool_indices':querry_pool_indices,
             'collect_indexes_per_class':collect_indexes_per_class}
 
-def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,eval_var_dataset,args):
+def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,eval_var_dataset,args,save_path):
 
     dataset_eval_dict_train = eval_var_dataset(model, train_loader,args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
     print("Training accuracy: ", dataset_eval_dict_train["accuracy"])#"accuracy"])
@@ -551,29 +551,29 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
                                             openset_dataset_eval_dicts,
                                             "out_mus", "out_sigmas",
                                             args.dataset + ' (trained)',
-                                            args.var_samples, 'save_path')
+                                            args.var_samples, save_path)
 
     # visualize the outlier probabilities
     visualization.visualize_weibull_outlier_probabilities(outlier_probs_correct, openset_outlier_probs_dict,
-                                            args.dataset + ' (trained)', 'save_path', tailsize)
+                                            args.dataset + ' (trained)', save_path, tailsize)
 
     visualization.visualize_classification_scores(dataset_eval_dict["out_mus_correct"], openset_dataset_eval_dicts, 'out_mus',
-                                    args.dataset + ' (trained)', 'save_path')
+                                    args.dataset + ' (trained)', save_path)
 
     visualization.visualize_entropy_histogram(dataset_eval_dict["out_entropy"], openset_dataset_eval_dicts,
                                 dataset_entropy_classification_correct["entropy_thresholds"][-1], "out_entropy",
-                                args.dataset + ' (trained)', 'save_path')
+                                args.dataset + ' (trained)', save_path)
 
     # joint plot for outlier detection accuracy for seen and both unseen datasets
     visualization.visualize_openset_classification(dataset_classification_correct["outlier_percentage"],
                                     openset_classification_dict, "outlier_percentage",
                                     args.dataset + ' (trained)',
-                                    dataset_classification_correct["thresholds"], 'save_path', tailsize)
+                                    dataset_classification_correct["thresholds"], save_path, tailsize)
 
     visualization.visualize_entropy_classification(dataset_entropy_classification_correct["entropy_outlier_percentage"],
                                     openset_entropy_classification_dict, "entropy_outlier_percentage",
                                     args.dataset + ' (trained)',
-                                    dataset_entropy_classification_correct["entropy_thresholds"], 'save_path')
+                                    dataset_entropy_classification_correct["entropy_thresholds"], save_path)
 
     return topk
 
