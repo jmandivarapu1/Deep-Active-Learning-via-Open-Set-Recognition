@@ -4,7 +4,9 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 from torchvision import models
-
+import arguments_yaml
+import yaml
+from easydict import EasyDict
 class MetaModel(nn.Module):
     def __init__(self):
         super(MetaModel, self).__init__()
@@ -1003,30 +1005,16 @@ class WRN_caltech_actual(nn.Module):
             model.classifier[6] = nn.Sequential(nn.Linear(4096,num_classes ), nn.ReLU(), nn.Dropout(0.2),nn.Linear(num_classes, num_classes), nn.LogSoftmax(dim=1))
         self.avgpool = model.avgpool
         self.encoder =nn.Sequential(*[model.features[i] for i in range(31)])#make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
-        #print(make_vgg())
-        # nn.Sequential(OrderedDict([
-        #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
-        #     ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
-        #                                        WRNBasicBlock, batchnorm=self.batch_norm, dropout=self.dropout)),
-        #     ('encoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[2],
-        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
-        #                                        dropout=self.dropout)),
-        #     ('encoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[3],
-        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
-        #                                        dropout=self.dropout)),
-        #     ('encoder_bn1', nn.BatchNorm2d(self.nChannels[3], eps=self.batch_norm)),
-        #     ('encoder_act1', nn.ReLU(inplace=True))
-        # ]))
 
         self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,self.num_colors)
         if self.variational:
-            self.latent_mu = nn.Linear(25088,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
-            self.latent_std = nn.Linear(25088,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768,8192
+            self.latent_mu = nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
+            self.latent_std = nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768,8192
             self.latent_feat_out = self.latent_dim
         else:
             self.latent_feat_out = self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels
             self.latent_dim = self.latent_feat_out
-            print(self.latent_dim)
+            #print(self.latent_dim)
 
         if self.joint:
             self.classifier = nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
@@ -1053,7 +1041,20 @@ class WRN_caltech_actual(nn.Module):
                                             bias=False))
             ]))
         else:
-            self.classifier =  nn.Sequential(*[model.classifier[i] for i in range(7)])
+
+            if args.train_var:
+                print("ne")
+                self.classifier =  nn.Sequential( nn.Linear(512, 512),
+                                                            nn.Dropout(0.2), 
+                                                            nn.Linear(512, 256), 
+                                                            nn.ReLU(), 
+                                                            nn.Dropout(0.2),
+                                                            nn.Linear(256, 256), 
+                                                            nn.LogSoftmax(dim=1))
+                
+            else:
+                self.classifier =  nn.Sequential(*[model.classifier[i] for i in range(7)])
+                
             # nn.Sequential(
             #         nn.Linear(25088, 4096),
             #         nn.ReLU(), 
@@ -1070,15 +1071,15 @@ class WRN_caltech_actual(nn.Module):
 
     def encode(self, x):
         x = self.encoder(x)
-        classifier_z = self.avgpool(x)
-        #print("shape of encoder is",x.shape)
+        x = self.avgpool(x)
+        #print("shape of encoder is",x.shape)#25088
         if self.variational:
             x = x.view(x.size(0), -1)
             z_mean = self.latent_mu(x)
             z_std = self.latent_std(x)
-            return z_mean, z_std,classifier_z
+            return z_mean, z_std
         else:
-            return self.avgpool(x)
+            return x
 
     def reparameterize(self, mu, std):
         eps = std.data.new(std.size()).normal_()
@@ -1100,7 +1101,7 @@ class WRN_caltech_actual(nn.Module):
 
     def forward(self, x):
         if self.variational:
-            z_mean, z_std,classifier_z = self.encode(x)
+            z_mean, z_std = self.encode(x)
             if self.joint:
                 output_samples = torch.zeros(self.num_samples, x.size(0), self.num_colors, self.patch_size,
                                              self.patch_size).to(self.device)
@@ -1114,6 +1115,8 @@ class WRN_caltech_actual(nn.Module):
                     output_samples[i] = self.decode(z)
                     classification_samples[i] = self.classifier(z)
                 else:
+                    #print("shape of avg is",z.shape)
+                    #avg=self.avgpool(z)
                     output_samples[i] = self.classifier(z)
             if self.joint:
                 return classification_samples, output_samples, z_mean, z_std
@@ -1132,3 +1135,31 @@ class WRN_caltech_actual(nn.Module):
 
 
 
+
+# args = arguments_yaml.get_args()
+# with open(args.work_path) as f:
+#     config = yaml.load(f)
+#     # convert to dict
+# args = EasyDict(config)
+# tests=WRN_caltech_actual('cuda',256, 3, args)
+# x = torch.randn(2, 3, 224, 224)
+# tests(x)
+  #print(make_vgg())
+        # nn.Sequential(OrderedDict([
+        #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
+        #     ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, dropout=self.dropout)),
+        #     ('encoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[2],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[3],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_bn1', nn.BatchNorm2d(self.nChannels[3], eps=self.batch_norm)),
+        #     ('encoder_act1', nn.ReLU(inplace=True))
+        # ]))
+
+
+# classifier->512->avgpool->25088->(classifier with input as 25088-4096-4096)->256 - Method 1
+# classifier->512->avgpool->25088->(classifier with input as 25088)->Zmean,Zstd ->Reparmetrizatrion tric->512->Classifier- Method 2
+# classifier->512->avgpool->25088->(classifier with input as 25088)->Zmean,Zstd ->Reparmetrizatrion tric->512->Classifier +Reconstruction Error- Method 3

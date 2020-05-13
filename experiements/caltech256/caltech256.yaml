@@ -37,7 +37,7 @@ samplePerClass: False #help='Helps in picking either samples per class or overal
 
 # Architecture and weight-init
 joint: False #type=bool,help='construct a joint model, i.e. including classifier and decoder')
-train_var: False #type=bool,help='Construct and train variational architecture (default: False)')
+train_var: True #type=bool,help='Construct and train variational architecture (default: False)')
 weight_init: kaiming-normal #help='weight-initialization scheme (default: kaiming-normal)')
 wrn_depth: 16 #type=int,help='amount of layers in the wide residual network (default: 16)')
 wrn_widen_factor: 10 #type=int,elp='width factor of the wide residual network (default: 10)')

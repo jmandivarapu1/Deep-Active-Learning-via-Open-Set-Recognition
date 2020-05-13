@@ -58,7 +58,7 @@ def accuracy(output, target, topk=(1,)):
 def testset_Accuracy(task_model,test_dataloader,args):
     task_model.eval()
     total, correct = 0, 0
-    if args.dataset == 'caltech256':
+    if args.dataset == 'caltech':
         for imgs, labels in test_dataloader:
             if args.cuda:
                 imgs = imgs.cuda()
@@ -72,9 +72,9 @@ def testset_Accuracy(task_model,test_dataloader,args):
             #     dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
             #     #print("preds sharpe",preds.shape,preds.size(1))
             #     preds=preds.view_as(dummy)
-            #print("preds sharpe",preds.shape)
-            # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
-            # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
+            print("preds sharpe",preds.shape)
+            with open('preds', 'wb') as fp:pickle.dump(preds, fp)
+            with open('labels', 'wb') as fp:pickle.dump(labels, fp)
             preds = torch.argmax(preds, dim=1).cpu().numpy()
             # print("predictions shape is",preds.shape)
             correct += accuracy_score(labels, preds, normalize=False)
