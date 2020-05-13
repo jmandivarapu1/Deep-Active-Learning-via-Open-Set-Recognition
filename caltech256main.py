@@ -1,7 +1,8 @@
 import torch
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms,models
 import torch.utils.data.sampler  as sampler
 import torch.utils.data as data
+import torch.nn as nn
 
 import numpy as np
 import argparse
@@ -64,13 +65,28 @@ def config_to_str(config):
 
 def cifar_transformer():
     return transforms.Compose([
-             transforms.RandomResizedCrop(224),
-              transforms.ToTensor()
+            transforms.ToTensor(),
                 # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
             #                     std=[0.5, 0.5, 0.5]),
         ])
-
+def caltech_transformer():
+    return transforms.Compose([
+         transforms.Resize(size=256),
+        transforms.CenterCrop(size=224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        # transforms.Scale(256),
+        # transforms.CenterCrop(224),
+        # transforms.ToTensor(),
+        #   transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                         std=[0.229, 0.224, 0.225])
+            # transforms.RandomResizedCrop(224),
+            # transforms.ToTensor(),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+            #                     std=[0.5, 0.5, 0.5]),
+        ])
 
 def plot_visdom(vis,x,y,winName,plotName):
     options = dict(fillarea=False,width=400,height=400,xlabel='Iteration',ylabel='Loss',title=winName)
@@ -95,28 +111,53 @@ def main(args):
     
     # vis.delete_env(environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
     # vis = visdom.Visdom(env=environment)
-    if args.train_var:
-        if args.joint:
-            print("came to the Joint Training")
-            from lib.Training.train import train_var_joint as train
-            from lib.Training.validate import validate_var_joint as validate
-            from lib.Training.loss_functions import var_loss_function_joint as criterion
+    if args.both_gpu:
+        if args.train_var:
+            if args.joint:
+                print("came to the Joint Training")
+                from Dataparalle_lib.Training.train import train_var_joint as train
+                from lib.Training.validate import validate_var_joint as validate
+                from lib.Training.loss_functions import var_loss_function_joint as criterion
+            else:
+                print("came to the expected loop")
+                from Dataparalle_lib.Training.train import train_var as train
+                from Dataparalle_lib.Training.validate import validate_var as validate
+                from Dataparalle_lib.Training.loss_functions import var_loss_function as criterion
+            from Dataparalle_lib.Training.evaluate import eval_var_dataset as evaluate
         else:
-            print("came to the expected loop")
-            from lib.Training.train import train_var as train
-            from lib.Training.validate import validate_var as validate
-            from lib.Training.loss_functions import var_loss_function as criterion
-        from lib.Training.evaluate import eval_var_dataset as evaluate
+            if args.joint:
+                from Dataparalle_lib.Training.train import train_joint as train
+                from Dataparalle_lib.Training.validate import validate_joint as validate
+                from lib.Training.loss_functions import loss_function_joint as criterion
+            else:
+                from Dataparalle_lib.Training.train import train as train
+                from Dataparalle_lib.Training.validate import validate as validate
+                from Dataparalle_lib.Training.loss_functions import loss_function as criterion
+        from Dataparalle_lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
     else:
-        if args.joint:
-            from lib.Training.train import train_joint as train
-            from lib.Training.validate import validate_joint as validate
-            from lib.Training.loss_functions import loss_function_joint as criterion
+        if args.train_var:
+            if args.joint:
+                print("came to the Joint Training")
+                from lib.Training.train import train_var_joint as train
+                from lib.Training.validate import validate_var_joint as validate
+                from lib.Training.loss_functions import var_loss_function_joint as criterion
+            else:
+                print("came to the expected loop")
+                from lib.Training.train import train_var as train
+                from lib.Training.validate import validate_var as validate
+                from lib.Training.loss_functions import var_loss_function as criterion
+            from lib.Training.evaluate import eval_var_dataset as evaluate
         else:
-            from lib.Training.train import train as train
-            from lib.Training.validate import validate as validate
-            from lib.Training.loss_functions import loss_function as criterion
-    from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
+            if args.joint:
+                from lib.Training.train import train_joint as train
+                from lib.Training.validate import validate_joint as validate
+                from lib.Training.loss_functions import loss_function_joint as criterion
+            else:
+                from lib.Training.train import train as train
+                from lib.Training.validate import validate as validate
+                from lib.Training.loss_functions import loss_function as criterion
+        from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
+        
 
 
 
@@ -158,16 +199,20 @@ def main(args):
         args.num_classes = 1000
     elif args.dataset == 'caltech256':
         print("path os fata is",args.data_path)
-        # test_dataloader = data.DataLoader(datasets.Caltech256(args.data_path,download=True, 
-        #     transform=imagenet_transformer()),
-        #     drop_last=False, batch_size=args.batch_size)
-        train_dataset = Caltech256(args.data_path)
-        args.num_val = 2500
-        args.num_images = 29780
+        test_dataloader = data.DataLoader(datasets.ImageFolder(args.data_path+'test/',transform=caltech_transformer()),drop_last=True, batch_size=args.test_batch_size)
+        train_dataset = Caltech256(args.data_path+'train/')
+        print(len(train_dataset),len(test_dataloader))
+
+        # args.num_val = 00
+        # args.num_images = 6500
+        # args.budget = 1530
+        # args.initial_budget = 6000
+        # args.num_classes = 256
+        args.num_val = 2700
+        args.num_images = 26683
         args.budget = 1530
         args.initial_budget = 3060
         args.num_classes = 256
-        args.test=5000
     elif args.dataset == 'Cityscapes':
         test_dataloader = data.DataLoader(
                 datasets.Cityscapes(args.data_path,download=True, transform=imagenet_transformer()),
@@ -188,70 +233,30 @@ def main(args):
         random.seed(30)
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Config: %s" % config_to_str(args))
+    all_indices = set(np.arange(args.num_images))
+    val_indices = random.sample(all_indices, args.num_val)
+    all_indices = np.setdiff1d(list(all_indices), val_indices)
+    initial_indices = random.sample(list(all_indices), args.initial_budget)
+    sampler = data.sampler.SubsetRandomSampler(initial_indices)
+    val_sampler = data.sampler.SubsetRandomSampler(val_indices)
 
-    if args.dataset == 'caltech256':
-        '''
-        We are going to write separate loaders for caltech256 as we are reading this from images folder which doesn't 
-        have any separate folders for test/train/validation. So we read all the dataset into single dataloader then sample
-        using the indexes
-        total data 30,607
-        test data 5000 (For MNIST 50,000 train and 10,000 test)
-        validation data 2500 (10% of training data which is 0.1*25607)
-        training data 25607-2500=23607
-        '''
-        all_indices = set(np.arange(args.num_images)) # total 30,607 images
-        val_indices = random.sample(all_indices, args.num_val)#created the validation indexes which are 10% of traing
-        all_indices = np.setdiff1d(list(all_indices), val_indices)
-        test_indices = random.sample(list(all_indices), args.test)
-        all_indices = np.setdiff1d(list(all_indices), test_indices)
+    #The below lines are only for weibull distrubution which need two validation sets to pll off
+    val_indices_set1=val_indices[0:int(len(val_indices)/2)]
+    val_indices_set2=val_indices[int(len(val_indices)/2):]
+    val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
+    val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
+    val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
+    val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
 
-        #All the splits are done until above line
-        initial_indices = random.sample(list(all_indices), args.initial_budget)#Intial Budget indicies
-        #Train Sampler
-        sampler = data.sampler.SubsetRandomSampler(initial_indices)
-        #Test Sampler
-        test_sampler = data.sampler.SubsetRandomSampler(test_indices)
+    # dataset with labels available
+    querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
+    val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
 
-        #Validation Sampler
-        val_sampler = data.sampler.SubsetRandomSampler(val_indices)
-        val_indices_set1=val_indices[0:int(len(val_indices)/2)]
-        val_indices_set2=val_indices[int(len(val_indices)/2):]
-        val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
-        val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
-        val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
-        val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
-        # dataset with labels available
-        querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
-        test_dataloader = data.DataLoader(train_dataset, sampler=test_sampler, batch_size=args.batch_size, drop_last=False)
-        val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
-
-    else:
-        all_indices = set(np.arange(args.num_images))
-        val_indices = random.sample(all_indices, args.num_val)
-        all_indices = np.setdiff1d(list(all_indices), val_indices)
-        initial_indices = random.sample(list(all_indices), args.initial_budget)
-        sampler = data.sampler.SubsetRandomSampler(initial_indices)
-        val_sampler = data.sampler.SubsetRandomSampler(val_indices)
-        
-
-        #The below lines are only for weibull distrubution which need two validation sets to pll off
-        val_indices_set1=val_indices[0:int(len(val_indices)/2)]
-        val_indices_set2=val_indices[int(len(val_indices)/2):]
-        val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
-        val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
-        val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
-        val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
-
-        # dataset with labels available
-        querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
-        val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
-
-
-    print("length of the Querry loader",len(querry_dataloader)*128)
-    print("length of the Test loader",len(test_dataloader)*128)    
-    print("length of the Validation loader",len(val_dataloader)*128)  
-    print("length of the Validation loader I",len(val_dataloader_set1)*128) 
-    print("length of the Validation loader I",len(val_dataloader_set2)*128) 
+    print("length of the Querry loader",len(querry_dataloader)*args.batch_size)
+    print("length of the Test loader",len(test_dataloader)*args.batch_size)
+    print("length of the Validation loader",len(val_dataloader)*args.batch_size)
+    print("length of the Validation loader ",len(val_dataloader_set1)*args.batch_size) 
+    print("length of the Validation loader",len(val_dataloader_set2)*args.batch_size)  
     args.cuda = torch.cuda.is_available()
 
     solver = Solver(args, test_dataloader,val_dataloader_set1,val_dataloader_set2)
@@ -277,7 +282,14 @@ def main(args):
         lr_change=[150,250]
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
         if args.dataset == 'caltech256':
-            task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)
+            task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
+            # for param in task_model.parameters():
+            #     param.requires_grad = False
+            #     # n_inputs = 25088#task_model.classifier[6].in_features
+            #     # Add on classifier
+            #     task_model.classifier[6] = nn.Sequential(
+            #         nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
+            #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
         else:
             task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
         print("mode",task_model)

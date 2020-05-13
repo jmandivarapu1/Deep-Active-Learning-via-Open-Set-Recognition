@@ -3,6 +3,7 @@
 #CUDA
 cuda: True #'If training is to be done on a GPU')
 device: cpu #help='Cuda Devicce')
+both_gpu : True #Important as this will define which folder to pic for evaluate #Mainly for Caltech256,Imagenet
 workers: 4 #help='number of data loading workers (default: 4)')
 patch_size: 32  #help='patch size for crops (default: 28)')
 dropout: 0.0 #help='Dropout probability. '                                                           
@@ -18,7 +19,7 @@ print_freq: 100
 valid_print_freq: 500
 
 # Training hyper-parameters #ARCHITECUTRE
-epochs: 50 #, type=int, help='number of total epochs to run')
+epochs: 10 #, type=int, help='number of total epochs to run')
 batch_size: 128 #help='Batch size used for training and testing')
 test_batch_size : 256
 latent_dim: 25088 #help='The dimensionality of the VAE latent dimension')
@@ -36,7 +37,7 @@ samplerMethod: classifierProbability,LatentMeanDistance,WiebullOutlierProbs,Entr
 samplePerClass: False #help='Helps in picking either samples per class or overall')
 
 # Architecture and weight-init
-joint: True #type=bool,help='construct a joint model, i.e. including classifier and decoder')
+joint: False #type=bool,help='construct a joint model, i.e. including classifier and decoder')
 train_var: True #type=bool,help='Construct and train variational architecture (default: False)')
 weight_init: kaiming-normal #help='weight-initialization scheme (default: kaiming-normal)')
 wrn_depth: 16 #type=int,help='amount of layers in the wide residual network (default: 16)')
@@ -50,7 +51,7 @@ var_samples: 1 #type=int,help='number of samples for the expectation in variatio
 model_samples: 1 #type=int,help='Number of stochastic forward inference passes to compute for e.g. MC dropout (default: 1)')
 openset_datasets: cifar10,FashionMNIST,AudioMNIST,KMNIST,CIFAR10,CIFAR100,SVHN #help='name of openset datasets')
 distance_function: cosine #', help='Openset distance function (default: cosine) '                                                                    'choice of euclidean|cosine|mix')
-openset_weibull_tailsize: 0.05 #, '--openset-weibull-tailsize', default=0.05, type=float,
+openset_weibull_tailsize: 0.5 #, '--openset-weibull-tailsize', default=0.05, type=float,
 
 #PATHS to store the models and files
 data_path: /mnt/iscsi/data/Jay/datasets/caltech256/caltech256/output/ #help='Path to where the data is')
