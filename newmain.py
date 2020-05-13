@@ -253,14 +253,14 @@ def main(args):
         lr_change=[150,250]
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
         if args.dataset == 'caltech256':
-            task_model=models.vgg16(pretrained=True)#model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
-            for param in task_model.parameters():
-                param.requires_grad = False
-                # n_inputs = 25088#task_model.classifier[6].in_features
-                # Add on classifier
-                task_model.classifier[6] = nn.Sequential(
-                    nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
-                    nn.Linear(256, 256), nn.LogSoftmax(dim=1))
+            task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
+            # for param in task_model.parameters():
+            #     param.requires_grad = False
+            #     # n_inputs = 25088#task_model.classifier[6].in_features
+            #     # Add on classifier
+            #     task_model.classifier[6] = nn.Sequential(
+            #         nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
+            #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
         else:
             task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
         print("mode",task_model)

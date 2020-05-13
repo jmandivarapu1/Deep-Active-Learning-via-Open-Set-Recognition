@@ -30,7 +30,7 @@ def train(Dataset,validate,test_dataloader, model, criterion, epoch, optimizer, 
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
-    print("came to regular train")
+    #print("came to regular train")
 
     # Create instances to accumulate losses etc.
     losses = AverageMeter()

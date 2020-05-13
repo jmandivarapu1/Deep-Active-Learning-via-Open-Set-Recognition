@@ -997,6 +997,10 @@ class WRN_caltech_actual(nn.Module):
         #print("total nchannekls are",self.nChannels,self.num_block_layers, self.variational,self.num_samples,self.latent_dim,self.batch_norm )
         #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
         model=models.vgg16(pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+            # Add on classifier
+            model.classifier[6] = nn.Sequential(nn.Linear(4096,num_classes ), nn.ReLU(), nn.Dropout(0.2),nn.Linear(num_classes, num_classes), nn.LogSoftmax(dim=1))
         self.avgpool = model.avgpool
         self.encoder =nn.Sequential(*[model.features[i] for i in range(31)])#make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
         #print(make_vgg())
@@ -1049,18 +1053,19 @@ class WRN_caltech_actual(nn.Module):
                                             bias=False))
             ]))
         else:
-            self.classifier =  nn.Sequential(
-                    nn.Linear(25088, 4096),
-                    nn.ReLU(), 
-                    nn.Dropout(0.2), 
-                    nn.Linear(4096, 4096),
-                    nn.ReLU(), 
-                    nn.Dropout(0.2), 
-                    nn.Linear(4096, 256), 
-                    nn.ReLU(), 
-                    nn.Dropout(0.2),
-                    nn.Linear(256, 256), 
-                    nn.LogSoftmax(dim=1))
+            self.classifier =  nn.Sequential(*[model.classifier[i] for i in range(7)])
+            # nn.Sequential(
+            #         nn.Linear(25088, 4096),
+            #         nn.ReLU(), 
+            #         nn.Dropout(0.2), 
+            #         nn.Linear(4096, 4096),
+            #         nn.ReLU(), 
+            #         nn.Dropout(0.2), 
+            #         nn.Linear(4096, 256), 
+            #         nn.ReLU(), 
+            #         nn.Dropout(0.2),
+            #         nn.Linear(256, 256), 
+            #         nn.LogSoftmax(dim=1))
             # #nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
 
     def encode(self, x):
