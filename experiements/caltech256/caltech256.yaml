@@ -18,8 +18,8 @@ print_freq: 100
 valid_print_freq: 500
 
 # Training hyper-parameters #ARCHITECUTRE
-epochs: 300 #, type=int, help='number of total epochs to run')
-batch_size: 64 #help='Batch size used for training and testing')
+epochs: 50 #, type=int, help='number of total epochs to run')
+batch_size: 128 #help='Batch size used for training and testing')
 test_batch_size : 256
 latent_dim: 25088 #help='The dimensionality of the VAE latent dimension')
 learning_rate: 0.001 #, '--learning-rate', default=1e-3, type=float, help='initial learning rate (default: 1e-3)')
@@ -36,7 +36,7 @@ samplerMethod: classifierProbability,LatentMeanDistance,WiebullOutlierProbs,Entr
 samplePerClass: False #help='Helps in picking either samples per class or overall')
 
 # Architecture and weight-init
-joint: False #type=bool,help='construct a joint model, i.e. including classifier and decoder')
+joint: True #type=bool,help='construct a joint model, i.e. including classifier and decoder')
 train_var: True #type=bool,help='Construct and train variational architecture (default: False)')
 weight_init: kaiming-normal #help='weight-initialization scheme (default: kaiming-normal)')
 wrn_depth: 16 #type=int,help='amount of layers in the wide residual network (default: 16)')

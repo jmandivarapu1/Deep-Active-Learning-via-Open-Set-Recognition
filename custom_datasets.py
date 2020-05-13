@@ -85,19 +85,18 @@ class CIFAR100(Dataset):
 class Caltech256(Dataset):
     def __init__(self, path):
         self.caltech256 =  datasets.ImageFolder(root=path,transform=transforms.Compose([
-            transforms.Resize((256,256)),
-            transforms.RandomResizedCrop(224),
+            transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
+            transforms.RandomRotation(degrees=15),
+            transforms.ColorJitter(),
             transforms.RandomHorizontalFlip(),
+            transforms.CenterCrop(size=224),  # Image net standards
             transforms.ToTensor(),
-            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-            #                     std=[0.229, 0.224, 0.225])
+            transforms.Normalize([0.485, 0.456, 0.406],
+                                [0.229, 0.224, 0.225])  # Imagenet standards
+            # transforms.Resize((256,256)),
             # transforms.RandomResizedCrop(224),
-            # # transforms.Resize((128,128)),
-            # # transforms.Resize(256),
-            # transforms.CenterCrop(128),
+            # transforms.RandomHorizontalFlip(),
             # transforms.ToTensor(),
-            #  transforms.Normalize(mean=[0.485, 0.456, 0.406],
-            #                  std=[0.229, 0.224, 0.225])
         ]))
 
     

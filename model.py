@@ -1008,8 +1008,9 @@ class WRN_caltech_actual(nn.Module):
 
         self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,self.num_colors)
         if self.variational:
-            self.latent_mu = nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
-            self.latent_std = nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768,8192
+            model.classifier[6] = nn.Sequential(nn.Linear(4096,self.latent_dim))
+            self.latent_mu =  nn.Sequential(*[model.classifier[i] for i in range(7)])#nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
+            self.latent_std = nn.Sequential(*[model.classifier[i] for i in range(7)])#nn.Linear(self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels*7*7,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768,8192
             self.latent_feat_out = self.latent_dim
         else:
             self.latent_feat_out = self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels
@@ -1044,13 +1045,13 @@ class WRN_caltech_actual(nn.Module):
 
             if args.train_var:
                 print("ne")
-                self.classifier =  nn.Sequential( nn.Linear(512, 512),
-                                                            nn.Dropout(0.2), 
-                                                            nn.Linear(512, 256), 
-                                                            nn.ReLU(), 
-                                                            nn.Dropout(0.2),
-                                                            nn.Linear(256, 256), 
-                                                            nn.LogSoftmax(dim=1))
+                self.classifier =  nn.Sequential( nn.Linear(512, 256))
+                                                            # nn.Dropout(0.2), 
+                                                            # nn.Linear(512, 256), 
+                                                            # nn.ReLU(), 
+                                                            # nn.Dropout(0.2),
+                                                            # nn.Linear(256, 256), 
+                                                            # nn.LogSoftmax(dim=1))
                 
             else:
                 self.classifier =  nn.Sequential(*[model.classifier[i] for i in range(7)])

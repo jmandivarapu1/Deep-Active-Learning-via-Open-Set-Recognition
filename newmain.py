@@ -72,9 +72,13 @@ def cifar_transformer():
         ])
 def caltech_transformer():
     return transforms.Compose([
-        transforms.Scale(256),
-        transforms.CenterCrop(224),
+         transforms.Resize(size=256),
+        transforms.CenterCrop(size=224),
         transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        # transforms.Scale(256),
+        # transforms.CenterCrop(224),
+        # transforms.ToTensor(),
         #   transforms.Normalize(mean=[0.485, 0.456, 0.406],
         #                         std=[0.229, 0.224, 0.225])
             # transforms.RandomResizedCrop(224),
