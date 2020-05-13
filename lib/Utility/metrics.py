@@ -59,23 +59,23 @@ def testset_Accuracy(task_model,test_dataloader,args):
     task_model.eval()
     total, correct = 0, 0
     if args.dataset == 'caltech256':
-        for imgs, labels,_ in test_dataloader:
+        for imgs, labels in test_dataloader:
             if args.cuda:
                 imgs = imgs.cuda()
 
             with torch.no_grad():
-                preds, mu, std = task_model(imgs)
+                preds = task_model(imgs)# mu, std
             
             # print("labels sharpe",labels.shape)
             # print("preds sharpe",preds.shape)
-            if preds.size(0)>1:
-                dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
-                #print("preds sharpe",preds.shape,preds.size(1))
-                preds=preds.view_as(dummy)
+            # if preds.size(0)>1:
+            #     dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
+            #     #print("preds sharpe",preds.shape,preds.size(1))
+            #     preds=preds.view_as(dummy)
             #print("preds sharpe",preds.shape)
             # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
             # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
-            preds = torch.argmax(preds[0], dim=1).cpu().numpy()
+            preds = torch.argmax(preds, dim=1).cpu().numpy()
             # print("predictions shape is",preds.shape)
             correct += accuracy_score(labels, preds, normalize=False)
             total += imgs.size(0)
@@ -87,7 +87,10 @@ def testset_Accuracy(task_model,test_dataloader,args):
 
             with torch.no_grad():
                 preds, mu, std = task_model(imgs)
-            
+            if preds.size(0)>1:
+                dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
+                #print("preds sharpe",preds.shape,preds.size(1))
+                preds=preds.view_as(dummy)
             # print("labels sharpe",labels.shape)
             # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
             # with open('labels', 'wb') as fp:pickle.dump(labels, fp)

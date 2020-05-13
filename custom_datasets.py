@@ -19,8 +19,8 @@ def caltech256_transformer():
         transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
+        # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                      std=[0.229, 0.224, 0.225])
     ])
 
 def cifar10_transformer():
@@ -85,11 +85,22 @@ class CIFAR100(Dataset):
 class Caltech256(Dataset):
     def __init__(self, path):
         self.caltech256 =  datasets.ImageFolder(root=path,transform=transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.Resize((256,256)),
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+            #                     std=[0.229, 0.224, 0.225])
+            # transforms.RandomResizedCrop(224),
+            # # transforms.Resize((128,128)),
+            # # transforms.Resize(256),
+            # transforms.CenterCrop(128),
+            # transforms.ToTensor(),
+            #  transforms.Normalize(mean=[0.485, 0.456, 0.406],
+            #                  std=[0.229, 0.224, 0.225])
         ]))
 
+    
     def __getitem__(self, index):
         if isinstance(index, numpy.float64):
             index = index.astype(numpy.int64)

@@ -64,7 +64,8 @@ def config_to_str(config):
 
 def cifar_transformer():
     return transforms.Compose([
-            transforms.ToTensor(),
+             transforms.RandomResizedCrop(224),
+              transforms.ToTensor()
                 # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
             #                     std=[0.5, 0.5, 0.5]),

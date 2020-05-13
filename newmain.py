@@ -1,7 +1,8 @@
 import torch
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms,models
 import torch.utils.data.sampler  as sampler
 import torch.utils.data as data
+import torch.nn as nn
 
 import numpy as np
 import argparse
@@ -69,7 +70,19 @@ def cifar_transformer():
             # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
             #                     std=[0.5, 0.5, 0.5]),
         ])
-
+def caltech_transformer():
+    return transforms.Compose([
+        transforms.Scale(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        #   transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                         std=[0.229, 0.224, 0.225])
+            # transforms.RandomResizedCrop(224),
+            # transforms.ToTensor(),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+            #                     std=[0.5, 0.5, 0.5]),
+        ])
 
 def plot_visdom(vis,x,y,winName,plotName):
     options = dict(fillarea=False,width=400,height=400,xlabel='Iteration',ylabel='Loss',title=winName)
@@ -157,17 +170,20 @@ def main(args):
         args.num_classes = 1000
     elif args.dataset == 'caltech256':
         print("path os fata is",args.data_path)
-        # test_dataloader = data.DataLoader(datasets.Caltech256(args.data_path,download=True, 
-        #     transform=imagenet_transformer()),
-        #     drop_last=False, batch_size=args.batch_size)
-        train_dataset = Caltech256(args.data_path)
+        test_dataloader = data.DataLoader(datasets.ImageFolder(args.data_path+'test/',transform=caltech_transformer()),drop_last=True, batch_size=args.test_batch_size)
+        train_dataset = Caltech256(args.data_path+'train/')
         print(len(train_dataset),len(test_dataloader))
+
+        # args.num_val = 00
+        # args.num_images = 6500
+        # args.budget = 1530
+        # args.initial_budget = 6000
+        # args.num_classes = 256
         args.num_val = 2700
-        args.num_images = 27607
+        args.num_images = 26683
         args.budget = 1530
         args.initial_budget = 3060
         args.num_classes = 256
-        args.test=3000
     elif args.dataset == 'Cityscapes':
         test_dataloader = data.DataLoader(
                 datasets.Cityscapes(args.data_path,download=True, transform=imagenet_transformer()),
@@ -207,8 +223,11 @@ def main(args):
     querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
     val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
 
-    print("length od the Querry loader",len(querry_dataloader)*128)  
-    print("length od the Validation loader",len(val_dataloader)*128)  
+    print("length of the Querry loader",len(querry_dataloader)*args.batch_size)
+    print("length of the Test loader",len(test_dataloader)*args.batch_size)
+    print("length of the Validation loader",len(val_dataloader)*args.batch_size)
+    print("length of the Validation loader ",len(val_dataloader_set1)*args.batch_size) 
+    print("length of the Validation loader",len(val_dataloader_set2)*args.batch_size)  
     args.cuda = torch.cuda.is_available()
 
     solver = Solver(args, test_dataloader,val_dataloader_set1,val_dataloader_set2)
@@ -233,13 +252,24 @@ def main(args):
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
-        task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
+        if args.dataset == 'caltech256':
+            task_model=models.vgg16(pretrained=True)#model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
+            for param in task_model.parameters():
+                param.requires_grad = False
+                # n_inputs = 25088#task_model.classifier[6].in_features
+                # Add on classifier
+                task_model.classifier[6] = nn.Sequential(
+                    nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
+                    nn.Linear(256, 256), nn.LogSoftmax(dim=1))
+        else:
+            task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
         print("mode",task_model)
         
         task_model.train()
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
         if args.cuda:
             task_model = task_model.cuda()
+            task_model = torch.nn.DataParallel(task_model).to(args.device)
         #summary(task_model, (3, 32, 32))
         # WeightInitializer = WeightInit(args.weight_init)
         # WeightInitializer.init_model(task_model)

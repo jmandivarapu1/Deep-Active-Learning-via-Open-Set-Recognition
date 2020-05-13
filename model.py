@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
+from torchvision import models
 
 class MetaModel(nn.Module):
     def __init__(self):
@@ -164,6 +165,7 @@ def get_feat_size(block, spatial_size, ncolors=3):
     """
 
     x = torch.randn(2, ncolors, spatial_size, spatial_size)
+    print("block isss",block,ncolors, spatial_size, spatial_size)
     out = block(x)
     num_feat = out.size(1)
     spatial_dim_x = out.size(2)
@@ -591,6 +593,15 @@ def make_layers(cfg, batch_norm=False):
                 layers += [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
     return nn.Sequential(*layers)
+
+
+def make_vgg():
+    task_model=models.vgg16(pretrained=True)
+    del task_model.classifier
+    del task_model.avgpool
+
+    return task_model
+
 class WRN(nn.Module):
     """
     Flexibly sized Wide Residual Network (WRN). Extended to the variational setting.
@@ -969,7 +980,7 @@ class WRN_caltech_actual(nn.Module):
         self.nChannels = [args.wrn_embedding_size, 16 * self.widen_factor, 32 * self.widen_factor,512]
                           #64 * self.widen_factor]
 
-        print("total nchannekls are",self.nChannels,self)
+        #print("total nchannekls are",self.nChannels,self)
         assert ((self.depth - 4) % 6 == 0)
         self.num_block_layers = int((self.depth - 4) / 6)
 
@@ -983,11 +994,12 @@ class WRN_caltech_actual(nn.Module):
 
         if args.joint:
             self.joint = True
-        print("total nchannekls are",self.nChannels,self.num_block_layers, self.variational,self.num_samples,self.latent_dim,self.batch_norm )
+        #print("total nchannekls are",self.nChannels,self.num_block_layers, self.variational,self.num_samples,self.latent_dim,self.batch_norm )
         #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
-
-        self.encoder = make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
-        
+        model=models.vgg16(pretrained=True)
+        self.avgpool = model.avgpool
+        self.encoder =nn.Sequential(*[model.features[i] for i in range(31)])#make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+        #print(make_vgg())
         # nn.Sequential(OrderedDict([
         #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
         #     ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
@@ -1002,11 +1014,10 @@ class WRN_caltech_actual(nn.Module):
         #     ('encoder_act1', nn.ReLU(inplace=True))
         # ]))
 
-        self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,
-                                                                                          self.num_colors)
+        self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,self.num_colors)
         if self.variational:
             self.latent_mu = nn.Linear(25088,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
-            self.latent_std = nn.Linear(25088,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768
+            self.latent_std = nn.Linear(25088,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768,8192
             self.latent_feat_out = self.latent_dim
         else:
             self.latent_feat_out = self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels
@@ -1038,7 +1049,19 @@ class WRN_caltech_actual(nn.Module):
                                             bias=False))
             ]))
         else:
-            self.classifier = nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
+            self.classifier =  nn.Sequential(
+                    nn.Linear(25088, 4096),
+                    nn.ReLU(), 
+                    nn.Dropout(0.2), 
+                    nn.Linear(4096, 4096),
+                    nn.ReLU(), 
+                    nn.Dropout(0.2), 
+                    nn.Linear(4096, 256), 
+                    nn.ReLU(), 
+                    nn.Dropout(0.2),
+                    nn.Linear(256, 256), 
+                    nn.LogSoftmax(dim=1))
+            # #nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
 
     def encode(self, x):
         x = self.encoder(x)
@@ -1050,7 +1073,7 @@ class WRN_caltech_actual(nn.Module):
             z_std = self.latent_std(x)
             return z_mean, z_std,classifier_z
         else:
-            return x
+            return self.avgpool(x)
 
     def reparameterize(self, mu, std):
         eps = std.data.new(std.size()).normal_()
@@ -1098,6 +1121,7 @@ class WRN_caltech_actual(nn.Module):
                 classification = self.classifier(x.view(x.size(0), -1))
                 return classification, recon
             else:
+                #print("coming to the output")
                 output = self.classifier(x.view(x.size(0), -1))
             return output
 

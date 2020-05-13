@@ -15,7 +15,7 @@ def plot_visdom(vis,x,y,winName,plotName):
 
 
 
-def train(Dataset, model, criterion, epoch, optimizer, writer, device, args):
+def train(Dataset,validate,test_dataloader, model, criterion, epoch, optimizer, visdom, device, args,split,iterations):
     """
     Trains/updates the model for one epoch on the training dataset.
 
@@ -30,6 +30,7 @@ def train(Dataset, model, criterion, epoch, optimizer, writer, device, args):
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
+    print("came to regular train")
 
     # Create instances to accumulate losses etc.
     losses = AverageMeter()
@@ -42,9 +43,9 @@ def train(Dataset, model, criterion, epoch, optimizer, writer, device, args):
     model.train()
 
     end = time.time()
-
+    acc=0
     # train
-    for i, (inp, target) in enumerate(Dataset.train_loader):
+    for i, (inp, target,_) in enumerate(Dataset):
         inp = inp.to(device)
         target = target.to(device)
 
@@ -72,21 +73,27 @@ def train(Dataset, model, criterion, epoch, optimizer, writer, device, args):
         end = time.time()
 
         # print progress
-        if i % args.print_freq == 0:
+        if iterations % args.print_freq == 0:
             print('Training: [{0}][{1}/{2}]\t' 
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                   epoch+1, i, len(Dataset.train_loader), batch_time=batch_time,
+                   epoch+1, i, len(Dataset), batch_time=batch_time,
                    data_time=data_time, loss=losses, top1=top1))
-
-    # TensorBoard summary logging
-    writer.add_scalar('training/train_precision@1', top1.avg, epoch)
-    writer.add_scalar('training/train_class_loss', losses.avg, epoch)
-    writer.add_scalar('training/train_average_loss', losses.avg, epoch)
+            plot_visdom(visdom,iterations,loss.item(),str(int(split*100))+'_loss','loss')
+            acc=testset_Accuracy(model,test_dataloader,args)
+            plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
+        iterations=iterations+1
+    # # TensorBoard summary logging
+    # writer.add_scalar('training/train_precision@1', top1.avg, epoch)
+    # writer.add_scalar('training/train_class_loss', losses.avg, epoch)
+    # writer.add_scalar('training/train_average_loss', losses.avg, epoch)
 
     print(' * Train: Loss {loss.avg:.5f} Prec@1 {top1.avg:.3f}'.format(loss=losses, top1=top1))
+
+
+    return iterations,acc,loss
 
 
 def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimizer, visdom, device, args,split,iterations):
@@ -134,12 +141,13 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimiz
             #print("classamples size", output_samples.size(0), output_samples.shape)
             output_samples=output_samples.view_as(dummy)
         # calculate loss
-        with open('output_samples_', 'wb') as fp:pickle.dump(output_samples, fp)
-        with open('target', 'wb') as fp:pickle.dump(target, fp)
+        # with open('output_samples_', 'wb') as fp:pickle.dump(output_samples, fp)
+        # with open('target', 'wb') as fp:pickle.dump(target, fp)
         cl_loss, kld_loss = criterion(output_samples, target, mu, std, device)
 
         # add the individual loss components together and weight the KL term.
-        loss = cl_loss + args.var_beta * kld_loss
+        #print("only classification")
+        loss = cl_loss #+ args.var_beta * kld_loss
 
         # take mean to compute accuracy. Note if variational samples are 1 this only gets rid of a dummy dimension.
         output = torch.mean(output_samples, dim=0)
