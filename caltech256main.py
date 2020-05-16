@@ -25,8 +25,11 @@ from lib.Utility.utils import save_checkpoint
 import visualization
 from torchsummary import summary
 import GPUtil as GPU
+import collections
+from collections import OrderedDict
+
 # Custom library
-# torch.cuda.set_device(1)
+torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -75,7 +78,7 @@ def caltech_transformer():
          transforms.Resize(size=256),
         transforms.CenterCrop(size=224),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         # transforms.Scale(256),
         # transforms.CenterCrop(224),
         # transforms.ToTensor(),
@@ -116,8 +119,8 @@ def main(args):
             if args.joint:
                 print("came to the Joint Training")
                 from Dataparalle_lib.Training.train import train_var_joint as train
-                from lib.Training.validate import validate_var_joint as validate
-                from lib.Training.loss_functions import var_loss_function_joint as criterion
+                from Dataparalle_lib.Training.validate import validate_var_joint as validate
+                from Dataparalle_lib.Training.loss_functions import var_loss_function_joint as criterion
             else:
                 print("came to the expected loop")
                 from Dataparalle_lib.Training.train import train_var as train
@@ -138,25 +141,25 @@ def main(args):
         if args.train_var:
             if args.joint:
                 print("came to the Joint Training")
-                from lib.Training.train import train_var_joint as train
-                from lib.Training.validate import validate_var_joint as validate
-                from lib.Training.loss_functions import var_loss_function_joint as criterion
+                from Dataparalle_lib.lib.Training.train import train_var_joint as train
+                from Dataparalle_lib.lib.Training.validate import validate_var_joint as validate
+                from Dataparalle_lib.lib.Training.loss_functions import var_loss_function_joint as criterion
             else:
                 print("came to the expected loop")
-                from lib.Training.train import train_var as train
-                from lib.Training.validate import validate_var as validate
-                from lib.Training.loss_functions import var_loss_function as criterion
-            from lib.Training.evaluate import eval_var_dataset as evaluate
+                from Dataparalle_lib.lib.Training.train import train_var as train
+                from Dataparalle_lib.lib.Training.validate import validate_var as validate
+                from Dataparalle_lib.lib.Training.loss_functions import var_loss_function as criterion
+            from Dataparalle_lib.lib.Training.evaluate import eval_var_dataset as evaluate
         else:
             if args.joint:
-                from lib.Training.train import train_joint as train
-                from lib.Training.validate import validate_joint as validate
-                from lib.Training.loss_functions import loss_function_joint as criterion
+                from Dataparalle_lib.lib.Training.train import train_joint as train
+                from lDataparalle_lib.ib.Training.validate import validate_joint as validate
+                from Dataparalle_lib.lib.Training.loss_functions import loss_function_joint as criterion
             else:
-                from lib.Training.train import train as train
-                from lib.Training.validate import validate as validate
-                from lib.Training.loss_functions import loss_function as criterion
-        from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
+                from Dataparalle_lib.lib.Training.train import train as train
+                from Dataparalle_lib.lib.Training.validate import validate as validate
+                from Dataparalle_lib.lib.Training.loss_functions import loss_function as criterion
+        from Dataparalle_lib.lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
         
 
 
@@ -270,7 +273,17 @@ def main(args):
     Flags=create_flders(splits,args)
     print(Flags)
     
-    
+    #Getting the statistics of the entire dataset
+    count_idx_target=[]
+    for a,b,c in querry_dataloader:count_idx_target.extend(list(b.data.numpy()))
+    counter=collections.Counter(count_idx_target)
+    x=collections.OrderedDict(sorted(counter.items()))
+    a=np.array(x.keys())
+    b=list(x.values())
+    acc_options = dict(fillarea=True,width=400,height=400,xlabel='Epoch',ylabel='Accuracy',title=str('statusti'))
+    vis.bar(X=b,win='ACC',opts=acc_options)
+    sys.exit()
+
 
     for split in splits:
         num_colors=3
@@ -298,6 +311,7 @@ def main(args):
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
         if args.cuda:
             task_model = task_model.cuda()
+        if args.both_gpu:
             task_model = torch.nn.DataParallel(task_model).to(args.device)
         #summary(task_model, (3, 32, 32))
         # WeightInitializer = WeightInit(args.weight_init)

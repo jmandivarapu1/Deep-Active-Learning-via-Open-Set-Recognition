@@ -3,14 +3,14 @@
 #CUDA
 cuda: True #'If training is to be done on a GPU')
 device: cpu #help='Cuda Devicce')
-both_gpu : True #Important as this will define which folder to pic for evaluate #Mainly for Caltech256,Imagenet
+both_gpu : False #Important as this will define which folder to pic for evaluate #Mainly for Caltech256,Imagenet
 workers: 4 #help='number of data loading workers (default: 4)')
 patch_size: 32  #help='patch size for crops (default: 28)')
 dropout: 0.0 #help='Dropout probability. '                                                           
 weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
 
 #VISDOM ENV
-environment: AL_caltech256_run2
+environment: AL_caltech256_run1
 #DATASET
 dataset: caltech256 #help='Name of the dataset used.')
 num_classes: 256 #help='Numer of classes in the dataset')
@@ -19,7 +19,7 @@ print_freq: 100
 valid_print_freq: 500
 
 # Training hyper-parameters #ARCHITECUTRE
-epochs: 10 #, type=int, help='number of total epochs to run')
+epochs: 50 #, type=int, help='number of total epochs to run')
 batch_size: 128 #help='Batch size used for training and testing')
 test_batch_size : 256
 latent_dim: 25088 #help='The dimensionality of the VAE latent dimension')

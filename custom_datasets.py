@@ -91,8 +91,7 @@ class Caltech256(Dataset):
             transforms.RandomHorizontalFlip(),
             transforms.CenterCrop(size=224),  # Image net standards
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406],
-                                [0.229, 0.224, 0.225])  # Imagenet standards
+            # transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])  # Imagenet standards
             # transforms.Resize((256,256)),
             # transforms.RandomResizedCrop(224),
             # transforms.RandomHorizontalFlip(),

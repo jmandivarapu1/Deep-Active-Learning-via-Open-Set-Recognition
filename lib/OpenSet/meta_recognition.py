@@ -386,7 +386,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     # Get the mean of z for correctly classified data inputs
     mean_zs = get_means(dataset_eval_dict_train["zs_correct"])
     # visualize the mean z vectors
-    mean_zs_tensor = torch.stack(mean_zs, dim=0)
+    #mean_zs_tensor = torch.stack(mean_zs, dim=0)
     # visualize_means(mean_zs_tensor, num_classes, args.dataset, save_path, "z")
     # calculate each correctly classified example's distance to the mean z
     distances_to_z_means_correct_train = calc_distances_to_means(mean_zs, dataset_eval_dict_train["zs_correct"],args.distance_function)
