@@ -147,7 +147,7 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimiz
 
         # add the individual loss components together and weight the KL term.
         #print("only classification")
-        loss = cl_loss #+ args.var_beta * kld_loss
+        loss = cl_loss + args.var_beta * kld_loss
 
         # take mean to compute accuracy. Note if variational samples are 1 this only gets rid of a dummy dimension.
         output = torch.mean(output_samples, dim=0)

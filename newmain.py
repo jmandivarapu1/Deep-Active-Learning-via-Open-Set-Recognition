@@ -25,6 +25,8 @@ from lib.Utility.utils import save_checkpoint
 import visualization
 from torchsummary import summary
 import GPUtil as GPU
+import collections
+from collections import OrderedDict
 # Custom library
 # torch.cuda.set_device(1)
 
@@ -95,6 +97,35 @@ def plot_visdom(vis,x,y,winName,plotName):
     else:
         vis.line(X=np.array([x]),Y=np.array([y]),win=winName,update='append',name=plotName)
 
+
+def plot_per_class(vis,querry_dataloader,split,current_split):
+    #Getting the statistics of the entire dataset
+    count_idx_target=[]
+    for a,b,c in querry_dataloader:count_idx_target.extend(list(b.data.numpy()))
+    counter=collections.Counter(count_idx_target)
+    x=collections.OrderedDict(sorted(counter.items()))
+    a=np.array(x.keys())
+    b=list(x.values())
+    acc_options = dict(fillarea=True,width=400,height=400,xlabel='Classes',ylabel='Per Class Count',title=str('Querry Loader Class Analysis'))
+    if split:
+        vis.bar(X=b,win='loader_initial',opts=acc_options)
+    else:
+        vis.bar(X=b,win='loader_initial_'+str(int(current_split*100)),opts=acc_options)
+
+def plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices):
+    #Getting the statistics of the entire dataset
+    count_idx_target=[]
+    for index in sampled_indices:
+        count_idx_target.append(all_saved_indicies[index])
+    counter=collections.Counter(count_idx_target)
+    x=collections.OrderedDict(sorted(counter.items()))
+    a=np.array(x.keys())
+    b=list(x.values())
+    acc_options = dict(fillarea=True,width=400,height=400,xlabel='Classes',ylabel='Per Class Count',title=str('Sampler Class Analysis'))
+    if split:
+        vis.bar(X=b,win='Sampled'+str(int(split*100)),opts=acc_options)
+    else:
+        vis.bar(X=b,win='Sampled_'+str(int(split*100)),opts=acc_options)
         
 def main(args):
 
@@ -245,7 +276,7 @@ def main(args):
     Flags=create_flders(splits,args)
     print(Flags)
     
-    
+   
 
     for split in splits:
         num_colors=3
@@ -255,6 +286,7 @@ def main(args):
         best_acc=0
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
+        #plot_per_class(vis,querry_dataloader,True,split)
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
         if args.dataset == 'caltech256':
             task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
@@ -273,7 +305,7 @@ def main(args):
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
         if args.cuda:
             task_model = task_model.cuda()
-            task_model = torch.nn.DataParallel(task_model).to(args.device)
+            #task_model = torch.nn.DataParallel(task_model).to(args.device)
         #summary(task_model, (3, 32, 32))
         # WeightInitializer = WeightInit(args.weight_init)
         # WeightInitializer.init_model(task_model)
@@ -281,7 +313,13 @@ def main(args):
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset, 
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
-        
+
+        #works only for cifar10
+        if args.dataset =='cifar10':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar10.targets)
+        elif args.dataset =='cifar100':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
+
         print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
         optimizer = torch.optim.Adam(task_model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
         while epoch < args.epochs:
@@ -329,6 +367,7 @@ def main(args):
         with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
         sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, 

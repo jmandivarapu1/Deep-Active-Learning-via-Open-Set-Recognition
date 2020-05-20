@@ -506,7 +506,7 @@ class AudioMNIST:
         return train_loader, val_loader
 
 
-class CIFAR10:
+class cifar10:
     """
     CIFAR-10 dataset featuring tiny 32x32 color images of
     objects belonging to hundred different classes.

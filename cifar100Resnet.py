@@ -25,6 +25,7 @@ from lib.Utility.utils import save_checkpoint
 import visualization
 from torchsummary import summary
 import GPUtil as GPU
+import resenet
 # Custom library
 # torch.cuda.set_device(1)
 
@@ -114,25 +115,25 @@ def main(args):
     if args.train_var:
         if args.joint:
             print("came to the Joint Training")
-            from lib.Training.train import train_var_joint as train
-            from lib.Training.validate import validate_var_joint as validate
+            from Resnet_lib.Training.train import train_var_joint as train
+            from Resnet_lib.Training.validate import validate_var_joint as validate
             from lib.Training.loss_functions import var_loss_function_joint as criterion
         else:
             print("came to the expected loop")
-            from lib.Training.train import train_var as train
-            from lib.Training.validate import validate_var as validate
-            from lib.Training.loss_functions import var_loss_function as criterion
-        from lib.Training.evaluate import eval_var_dataset as evaluate
+            from Resnet_lib.Training.train import train_var as train
+            from Resnet_lib.Training.validate import validate_var as validate
+            from Resnet_lib.Training.loss_functions import var_loss_function as criterion
+        from Resnet_lib.Training.evaluate import eval_var_dataset as evaluate
     else:
         if args.joint:
-            from lib.Training.train import train_joint as train
-            from lib.Training.validate import validate_joint as validate
+            from Resnet_lib.Training.train import train_joint as train
+            from Resnet_lib.Training.validate import validate_joint as validate
             from lib.Training.loss_functions import loss_function_joint as criterion
         else:
-            from lib.Training.train import train as train
-            from lib.Training.validate import validate as validate
-            from lib.Training.loss_functions import loss_function as criterion
-    from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
+            from Resnet_lib.Training.train import train as train
+            from Resnet_lib.Training.validate import validate as validate
+            from Resnet_lib.Training.loss_functions import loss_function as criterion
+    from Resnet_lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
 
 
 
@@ -266,7 +267,7 @@ def main(args):
             #         nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
             #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
         else:
-            task_model=model.Resenet(args.device,args.num_classes, num_colors, args)
+            task_model=resenet.Resenet(args.device,args.num_classes, num_colors, args)
         print("mode",task_model)
         
         task_model.train()

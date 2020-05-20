@@ -86,15 +86,23 @@ def testset_Accuracy(task_model,test_dataloader,args):
                 imgs = imgs.cuda()
 
             with torch.no_grad():
-                preds, mu, std = task_model(imgs)
-            if preds.size(0)>1:
-                dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
-                #print("preds sharpe",preds.shape,preds.size(1))
-                preds=preds.view_as(dummy)
+                if args.train_var: #Added this if loop to handle condition of training a regular classifier with normal classification loss
+                    preds, mu, std = task_model(imgs)
+                else:
+                    preds = task_model(imgs)
+
+            # if preds.size(0)>1:
+            #     dummy=torch.Tensor(1,preds.size(1)*preds.size(0),args.num_classes)
+            #     #print("preds sharpe",preds.shape,preds.size(1))
+            #     preds=preds.view_as(dummy)
             # print("labels sharpe",labels.shape)
             # with open('preds', 'wb') as fp:pickle.dump(preds, fp)
             # with open('labels', 'wb') as fp:pickle.dump(labels, fp)
-            preds = torch.argmax(preds[0], dim=1).cpu().numpy()
+            if args.joint or args.train_var:
+                preds = torch.argmax(preds[0], dim=1).cpu().numpy()#line for two gpus
+            else:
+                preds = torch.argmax(preds, dim=1).cpu().numpy()#This works for the VAR=FALSE AND JOINT=FALSE
+           
             # print("predictions shape is",preds.shape)
             correct += accuracy_score(labels, preds, normalize=False)
             total += imgs.size(0)

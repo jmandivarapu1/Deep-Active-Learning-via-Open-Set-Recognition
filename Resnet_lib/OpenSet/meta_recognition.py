@@ -3,7 +3,7 @@ import numpy as np
 import libmr
 import collections
 import visualization
-import pickle
+
 
 def sample(values,all_indices,method,budget):
 
@@ -379,7 +379,7 @@ def eval_var_openset_dataset(model, data_loader, num_classes, device,args, laten
             'collect_indexes_per_class':collect_indexes_per_class}
 
 def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,eval_var_dataset,args,save_path):
-    samplerMethod=args.sampler
+
     dataset_eval_dict_train = eval_var_dataset(model, train_loader,args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
     print("Training accuracy: ", dataset_eval_dict_train["accuracy"])#"accuracy"])
     #Start Preparing for the sampling
@@ -390,67 +390,66 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     # visualize_means(mean_zs_tensor, num_classes, args.dataset, save_path, "z")
     # calculate each correctly classified example's distance to the mean z
     distances_to_z_means_correct_train = calc_distances_to_means(mean_zs, dataset_eval_dict_train["zs_correct"],args.distance_function)
-    with open('distances_to_z_means_correct_train', 'wb') as fp:pickle.dump(distances_to_z_means_correct_train, fp)
+
     #Weibull fitting
     # set tailsize according to command line parameters (according to percentage of dataset size)
-    if samplerMethod=='WiebullOutlierProbs':
-        tailsize = 2#int(len(train_loader)*128 * args.openset_weibull_tailsize / args.num_classes)
-        print("Fitting Weibull models with tailsize: " + str(tailsize),len(train_loader))
-        tailsizes = [tailsize] * args.num_classes
-        weibull_models, valid_weibull = fit_weibull_models(distances_to_z_means_correct_train, tailsizes)
-        # ------------------------------------------------------------------------------------------
-        # Fitting on train dataset complete. Determine rejection thresholds/priors on the created split set
-        # ------------------------------------------------------------------------------------------
-        print("Evaluating original threshold split dataset: " + args.dataset + ". This may take a while...")
-        threshset_eval_dict = eval_var_dataset(model, val_dataloader_set1, args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
+    tailsize = int(len(train_loader)*128 * args.openset_weibull_tailsize / args.num_classes)
+    print("Fitting Weibull models with tailsize: " + str(tailsize),len(train_loader))
+    tailsizes = [tailsize] * args.num_classes
+    weibull_models, valid_weibull = fit_weibull_models(distances_to_z_means_correct_train, tailsizes)
+    # ------------------------------------------------------------------------------------------
+    # Fitting on train dataset complete. Determine rejection thresholds/priors on the created split set
+    # ------------------------------------------------------------------------------------------
+    print("Evaluating original threshold split dataset: " + args.dataset + ". This may take a while...")
+    threshset_eval_dict = eval_var_dataset(model, val_dataloader_set1, args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
 
-        # Again calculate distances to mean z
-        print("Split set accuracy: ", threshset_eval_dict["accuracy"])
-        distances_to_z_means_threshset = calc_distances_to_means(mean_zs, threshset_eval_dict["zs_correct"],args.distance_function)
-        # get Weibull outlier probabilities for thresh set
-        outlier_probs_threshset = calc_outlier_probs(weibull_models, distances_to_z_means_threshset)
-        threshset_classification = calc_openset_classification(outlier_probs_threshset, args.num_classes,num_outlier_threshs=100)
-        #print("threshset_classification is",threshset_classification)
-        # also check outlier detection based on entropy
-        max_entropy = np.max(threshset_eval_dict["out_entropy"])
-        print("Max entopy is",max_entropy)
-        threshset_entropy_classification = calc_entropy_classification(threshset_eval_dict["out_entropy"],max_entropy,args,num_outlier_threshs=100)
-        #print("calc_entropy_classification",threshset_entropy_classification)
-        # determine rejection priors based on 5% of the split data considered as inlying
-        if (np.array(threshset_classification["outlier_percentage"]) <= 0.05).any() == True:
-            EVT_prior_index = np.argwhere(np.array(threshset_classification["outlier_percentage"])<= 0.05)[0][0]
-            EVT_prior = threshset_classification["thresholds"][EVT_prior_index]
-        else:
-            EVT_prior = 0.5
-            EVT_prior_index = 50
+    # Again calculate distances to mean z
+    print("Split set accuracy: ", threshset_eval_dict["accuracy"])
+    distances_to_z_means_threshset = calc_distances_to_means(mean_zs, threshset_eval_dict["zs_correct"],args.distance_function)
+    # get Weibull outlier probabilities for thresh set
+    outlier_probs_threshset = calc_outlier_probs(weibull_models, distances_to_z_means_threshset)
+    threshset_classification = calc_openset_classification(outlier_probs_threshset, args.num_classes,num_outlier_threshs=100)
+    #print("threshset_classification is",threshset_classification)
+    # also check outlier detection based on entropy
+    max_entropy = np.max(threshset_eval_dict["out_entropy"])
+    print("Max entopy is",max_entropy)
+    threshset_entropy_classification = calc_entropy_classification(threshset_eval_dict["out_entropy"],max_entropy,args,num_outlier_threshs=100)
+    #print("calc_entropy_classification",threshset_entropy_classification)
+    # determine rejection priors based on 5% of the split data considered as inlying
+    if (np.array(threshset_classification["outlier_percentage"]) <= 0.05).any() == True:
+        EVT_prior_index = np.argwhere(np.array(threshset_classification["outlier_percentage"])<= 0.05)[0][0]
+        EVT_prior = threshset_classification["thresholds"][EVT_prior_index]
+    else:
+        EVT_prior = 0.5
+        EVT_prior_index = 50
 
-        if (np.array(threshset_entropy_classification["entropy_outlier_percentage"]) <= 0.05).any() == True:
-            entropy_threshold_index = np.argwhere(np.array(threshset_entropy_classification["entropy_outlier_percentage"])
-                                                <= 0.05)[0][0]
-            entropy_threshold = threshset_entropy_classification["entropy_thresholds"][entropy_threshold_index]
-        else:
-            # this should never actually happen
-            entropy_threshold = np.median(threshset_entropy_classification["entropy_thresholds"])
-            entropy_threshold_index = 50
+    if (np.array(threshset_entropy_classification["entropy_outlier_percentage"]) <= 0.05).any() == True:
+        entropy_threshold_index = np.argwhere(np.array(threshset_entropy_classification["entropy_outlier_percentage"])
+                                            <= 0.05)[0][0]
+        entropy_threshold = threshset_entropy_classification["entropy_thresholds"][entropy_threshold_index]
+    else:
+        # this should never actually happen
+        entropy_threshold = np.median(threshset_entropy_classification["entropy_thresholds"])
+        entropy_threshold_index = 50
     
     
-        # ------------------------------------------------------------------------------------------
-        # We evaluate the validation set to later evaluate trained dataset's statistical inlier/outlier estimates.
-        print("Evaluating original validation dataset: " + args.dataset + ". This may take a while...")
-        dataset_eval_dict = eval_var_dataset(model, val_dataloader_set2, args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
+    # ------------------------------------------------------------------------------------------
+    # We evaluate the validation set to later evaluate trained dataset's statistical inlier/outlier estimates.
+    print("Evaluating original validation dataset: " + args.dataset + ". This may take a while...")
+    dataset_eval_dict = eval_var_dataset(model, val_dataloader_set2, args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
 
-        # Again calculate distances to mean z
-        print("Validation accuracy: ", dataset_eval_dict["accuracy"])
-        distances_to_z_means_correct = calc_distances_to_means(mean_zs, dataset_eval_dict["zs_correct"],args.distance_function)
+    # Again calculate distances to mean z
+    print("Validation accuracy: ", dataset_eval_dict["accuracy"])
+    distances_to_z_means_correct = calc_distances_to_means(mean_zs, dataset_eval_dict["zs_correct"],args.distance_function)
 
-        # Evaluate outlier probability of trained dataset's validation set
-        outlier_probs_correct = calc_outlier_probs(weibull_models, distances_to_z_means_correct)
+    # Evaluate outlier probability of trained dataset's validation set
+    outlier_probs_correct = calc_outlier_probs(weibull_models, distances_to_z_means_correct)
 
-        dataset_classification_correct = calc_openset_classification(outlier_probs_correct, args.num_classes,num_outlier_threshs=100)
-        dataset_entropy_classification_correct = calc_entropy_classification(dataset_eval_dict["out_entropy"],max_entropy,args,num_outlier_threshs=100)
+    dataset_classification_correct = calc_openset_classification(outlier_probs_correct, args.num_classes,num_outlier_threshs=100)
+    dataset_entropy_classification_correct = calc_entropy_classification(dataset_eval_dict["out_entropy"],max_entropy,args,num_outlier_threshs=100)
 
-        print(args.dataset + '(trained) EVT outlier percentage: ' +str(dataset_classification_correct["outlier_percentage"][EVT_prior_index]))
-        print(args.dataset + '(trained) entropy outlier percentage: ' +str(dataset_entropy_classification_correct["entropy_outlier_percentage"][entropy_threshold_index]))
+    print(args.dataset + '(trained) EVT outlier percentage: ' +str(dataset_classification_correct["outlier_percentage"][EVT_prior_index]))
+    print(args.dataset + '(trained) entropy outlier percentage: ' +str(dataset_entropy_classification_correct["entropy_outlier_percentage"][entropy_threshold_index]))
     
     ##########################################################################################################################################
     #                           START ON THE RESt OF TRAINING SET
@@ -459,7 +458,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     openset_dataset='cifar10'
     openset_datasets_names = args.openset_datasets.strip().split(',')
     openset_sampler_methods=args.samplerMethod.strip().split(',')
-    
+    samplerMethod=args.sampler
     print("The Sampling Method is",samplerMethod)
     openset_datasets = []
     # Repeat process for open set recognition on unseen datasets (
@@ -467,7 +466,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     openset_outlier_probs_dict = collections.OrderedDict()
     openset_classification_dict = collections.OrderedDict()
     openset_entropy_classification_dict = collections.OrderedDict()
-    print("Evaluating on rest of the tain set This may take a while...",len(unlabeled_dataloader)*128)
+    print("Evaluating on rest of the tain set This may take a while...",len(test_dataloader)*128)
     openset_dataset_eval_dict = eval_var_openset_dataset(model,unlabeled_dataloader, args.num_classes,
                                                         args.device,args, latent_var_samples=args.var_samples,
                                                         model_var_samples=args.model_samples)
@@ -479,17 +478,18 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     # with open('weibull_models', 'wb') as fp:pickle.dump(weibull_models, fp)
     #with open('openset_distances_to_z_means', 'wb') as fp:pickle.dump(openset_distances_to_z_means, fp)
     # sys.exit()
+    openset_distances_to_z_means = calc_distances_to_means(mean_zs, openset_dataset_eval_dict["zs"],'cosine')#args.distance_function)
 
-    
+    openset_outlier_probs = calc_outlier_probs(weibull_models, openset_distances_to_z_means)
 
-    
-    
+    # getting outlier classification accuracies across the entire datasets
+    openset_classification = calc_openset_classification(openset_outlier_probs, args.num_classes,num_outlier_threshs=100)
+
+    openset_entropy_classification = calc_entropy_classification(openset_dataset_eval_dict["out_entropy"],max_entropy, args,num_outlier_threshs=100)
 
     if samplerMethod=='classifierProbability':
         topk=sample([],openset_dataset_eval_dict['querry_pool_indices'],'NONE',args.budget)
-        return topk
     elif  samplerMethod=='LatentMeanDistance':
-        openset_distances_to_z_means = calc_distances_to_means(mean_zs, openset_dataset_eval_dict["zs"],'cosine')#args.distance_function)
         Rvalues=[]
         Rindexes=[]
         for i in range(0,args.num_classes):#openset_outlier_probs:
@@ -507,10 +507,6 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
             topk=sample(torch.cat(Rvalues, dim=0),torch.cat(Rindexes, dim=0),samplerMethod,args.budget)
             
     elif  samplerMethod=='WiebullOutlierProbs':
-        openset_distances_to_z_means = calc_distances_to_means(mean_zs, openset_dataset_eval_dict["zs"],'cosine')#args.distance_function)
-        openset_outlier_probs = calc_outlier_probs(weibull_models, openset_distances_to_z_means)
-        # getting outlier classification accuracies across the entire datasets
-        openset_classification = calc_openset_classification(openset_outlier_probs, args.num_classes,num_outlier_threshs=100)
         Rvalues=[]
         Rindexes=[]
         for i in range(0,args.num_classes):#openset_outlier_probs:
@@ -528,7 +524,6 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
             topk=sample(torch.cat(Rvalues, dim=0),torch.cat(Rindexes, dim=0),samplerMethod,args.budget)
             
     elif samplerMethod=='Entropy':
-        openset_entropy_classification = calc_entropy_classification(openset_dataset_eval_dict["out_entropy"],max_entropy, args,num_outlier_threshs=100)
         topk=sample(openset_dataset_eval_dict,openset_classification,samplerMethod)
     elif samplerMethod=='openSet':
         topk=sample(openset_dataset_eval_dict,openset_entropy_classification,samplerMethod)
