@@ -62,7 +62,7 @@ def config_to_str(config):
 def cifar_transformer():
     return transforms.Compose([
             transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+               # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
             #                     std=[0.5, 0.5, 0.5]),
         ])
@@ -123,8 +123,8 @@ def main(args):
     #The below lines are only for weibull distrubution which need two validation sets to pll off
     val_indices_set1=val_indices[0:int(len(val_indices)/2)]
     val_indices_set2=val_indices[int(len(val_indices)/2):]
-    val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices)
-    val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices)
+    val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
+    val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
     val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,
             batch_size=args.batch_size, drop_last=False)
     val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,
@@ -164,6 +164,7 @@ def main(args):
         num_colors=3
         vae=model.WRN(args.device, args.num_classes, num_colors, args)
        
+        print(vae)
         print()
         # WeightInitializer = WeightInit(args.weight_init)
         # WeightInitializer.init_model(vae)

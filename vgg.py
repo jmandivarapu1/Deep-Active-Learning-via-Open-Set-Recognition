@@ -19,14 +19,12 @@ model_urls = {
     'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
 
-
 class VGG(nn.Module):
 
     def __init__(self, features, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-        #self.fc4=  nn.Linear(512 * 7 * 7, 4096)
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(True),
@@ -43,9 +41,8 @@ class VGG(nn.Module):
         x = self.features(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        fcOut=torch.flatten(x, 1)
         x = self.classifier(x)
-        return x,fcOut
+        return x
 
     def _initialize_weights(self):
         for m in self.modules():
@@ -59,7 +56,6 @@ class VGG(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
-
 
 def make_layers(cfg, batch_norm=False):
     layers = []

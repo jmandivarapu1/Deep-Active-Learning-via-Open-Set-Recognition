@@ -444,7 +444,7 @@ class Solver:
 
         optim_task_model = optim.SGD(task_model.parameters(), lr=0.01, weight_decay=5e-4, momentum=0.9)
         optim_discriminator = optim.Adam(MetaModel.parameters(), lr=0.0001)
-        optim_vae = torch.optim.Adam(vae.parameters(),lr=0.01, weight_decay=self.args.weight_decay)
+        optim_vae = torch.optim.Adam(vae.parameters(),lr=0.001, weight_decay=self.args.weight_decay)
         curr_dir=Flags[str(int(split*100))]
         # if os.path.exists(curr_dir):
         #     if len(os.listdir(curr_dir))>0:
@@ -498,7 +498,7 @@ class Solver:
              # calculate loss
             cl_loss, kld_loss = self.var_loss_function(output_samples, labels, mu, std, self.args.device)
             # add the individual loss components together and weight the KL term.
-            loss = cl_loss + self.args.var_beta * kld_loss
+            loss = cl_loss# + self.args.var_beta * kld_loss
             # take mean to compute accuracy. Note if variational samples are 1 this only gets rid of a dummy dimension.
             output = torch.mean(output_samples, dim=0)
             # record precision/accuracy and losses

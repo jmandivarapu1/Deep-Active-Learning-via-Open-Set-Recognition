@@ -643,19 +643,20 @@ class WRN(nn.Module):
         
         #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
         
-        self.encoder = nn.Sequential(OrderedDict([
-            ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
-            ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
-                                               WRNBasicBlock, batchnorm=self.batch_norm, dropout=self.dropout)),
-            ('encoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[2],
-                                               WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
-                                               dropout=self.dropout)),
-            ('encoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[3],
-                                               WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
-                                               dropout=self.dropout)),
-            ('encoder_bn1', nn.BatchNorm2d(self.nChannels[3], eps=self.batch_norm)),
-            ('encoder_act1', nn.ReLU(inplace=True))
-        ]))
+        self.encoder = make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+        # nn.Sequential(OrderedDict([
+        #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
+        #     ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, dropout=self.dropout)),
+        #     ('encoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[2],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[3],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_bn1', nn.BatchNorm2d(self.nChannels[3], eps=self.batch_norm)),
+        #     ('encoder_act1', nn.ReLU(inplace=True))
+        # ]))
 
         self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,self.num_colors)
         if self.variational:
@@ -845,8 +846,9 @@ class WRN_actual(nn.Module):
             self.joint = True
         #print("total nchannekls are",self.nChannels,self.num_block_layers, self.variational,self.num_samples,self.latent_dim,self.batch_norm )
         #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
-
-        self.encoder = make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+        model=models.vgg16_bn(num_classes=args.num_classes)
+        self.encoder = nn.Sequential(*[model.features[i] for i in range(44)])#make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+        #nn.Sequential(*[model.features[i] for i in range(31)]) #
         
         # nn.Sequential(OrderedDict([
         #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
@@ -903,6 +905,7 @@ class WRN_actual(nn.Module):
     def encode(self, x):
         x = self.encoder(x)
         classifier_z = self.avgpool(x)
+        #x = self.avgpool(x)
         #print("shape of encoder is",x.shape)
         if self.variational:
             x = x.view(x.size(0), -1)

@@ -28,7 +28,7 @@ import GPUtil as GPU
 import collections
 from collections import OrderedDict
 # Custom library
-# torch.cuda.set_device(1)
+torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -69,8 +69,8 @@ def cifar_transformer():
     return transforms.Compose([
             transforms.ToTensor(),
                 # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
-            #                     std=[0.5, 0.5, 0.5]),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+                                std=[0.5, 0.5, 0.5]),
         ])
 def caltech_transformer():
     return transforms.Compose([
@@ -298,13 +298,13 @@ def main(args):
             #         nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
             #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
         else:
-            task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)
+            task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
         print("mode",task_model)
         
-        task_model.train()
+        #task_model.train()
         # task_model.load_state_dict(torch.load('save_path/best_0.pt'))
-        if args.cuda:
-            task_model = task_model.cuda()
+        # if args.cuda:
+        #     task_model = task_model.cuda()
             #task_model = torch.nn.DataParallel(task_model).to(args.device)
         #summary(task_model, (3, 32, 32))
         # WeightInitializer = WeightInit(args.weight_init)
@@ -321,52 +321,68 @@ def main(args):
             all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
 
         print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
-        optimizer = torch.optim.Adam(task_model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-        while epoch < args.epochs:
-            if (epoch in lr_change):
-                for param in optimizer.param_groups:
-                    param['lr'] = param['lr'] / 10
-            # train
-            finished_iter,acc,loss=train(querry_dataloader,
+        best_acc,Best_Model,best_optimum=train(querry_dataloader,
                     validate,
                     test_dataloader,
                     task_model, 
                     criterion, 
                     epoch, 
-                    optimizer,
+                    # optimizer,
                     vis, 
-                    args.device, 
                     args,
                     split,
                     iterations)
+
+        save_path=Flags[str(int(split*100))]
+        torch.save(Best_Model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
+        save_checkpoint({'epoch': epoch,'state_dict': Best_Model.state_dict(),'best_acc': best_acc,'optimizer': best_optimum},
+                        best_acc, save_path)
+
+        # optimizer = torch.optim.Adam(task_model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        # while epoch < args.epochs:
+        #     if (epoch in lr_change):
+        #         for param in optimizer.param_groups:
+        #             param['lr'] = param['lr'] / 10
+        #     # train
+        #     finished_iter,acc,loss=train(querry_dataloader,
+        #             validate,
+        #             test_dataloader,
+        #             task_model, 
+        #             criterion, 
+        #             epoch, 
+        #             # optimizer,
+        #             vis, 
+        #             args,
+        #             split,
+        #             iterations)
         
             # evaluate on validation set
             # acc, loss = validate(, task_model, criterion, epoch, vis, args.device, args)
-            iterations=finished_iter
+            # iterations=finished_iter
             
-            # increment epoch counters
-            epoch += 1
+            # # increment epoch counters
+            # epoch += 1
            
-                    # remember best prec@1 and save checkpoint
-            is_best = best_acc < acc
-            if is_best:
-                best_acc=acc
-                save_path=Flags[str(int(split*100))]
-                best_model=task_model
-                torch.save(task_model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
-                save_checkpoint({'epoch': epoch,
-                                'state_dict': task_model.state_dict(),
-                                'best_prec': best_prec,
-                                'best_loss': best_loss,
-                                'optimizer': optimizer.state_dict()},
-                                is_best, save_path)
+            #         # remember best prec@1 and save checkpoint
+            # is_best = best_acc < acc
+            # if is_best:
+            #     best_acc=acc
+            #     save_path=Flags[str(int(split*100))]
+            #     best_model=task_model
+            #     torch.save(task_model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
+            #     save_checkpoint({'epoch': epoch,
+            #                     'state_dict': task_model.state_dict(),
+            #                     'best_prec': best_prec,
+            #                     'best_loss': best_loss,
+            #                     'optimizer': optimizer.state_dict()},
+                                # is_best, save_path)
         accuracies.append(best_acc)
         print("All accuracies until now",accuracies)
         GPUs = GPU.getGPUs()
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
         with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
-        print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
-        sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), best_acc))
+        sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
         plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)

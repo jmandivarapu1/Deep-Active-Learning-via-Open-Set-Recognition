@@ -4,11 +4,11 @@ import os
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', action='store_true',default=True, help='If training is to be done on a GPU')
-    parser.add_argument('--dataset', type=str, default='cifar100', help='Name of the dataset used.')
+    parser.add_argument('--dataset', type=str, default='cifar10', help='Name of the dataset used.')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size used for training and testing')
     parser.add_argument('--train_epochs', type=int, default=30, help='Number of training epochs')
     parser.add_argument('--latent_dim', type=int, default=25088, help='The dimensionality of the VAE latent dimension')
-    parser.add_argument('--data_path', type=str, default='/mnt/iscsi/data/Jay/datasets', help='Path to where the data is')
+    parser.add_argument('--data_path', type=str, default=' /mnt/iscsi/data/Jay/datasets/cifar10/', help='Path to where the data is')
     parser.add_argument('--beta', type=float, default=1, help='Hyperparameter for training. The parameter for VAE')
     parser.add_argument('--num_adv_steps', type=int, default=11, help='Number of adversary steps taken for every task model step')
     parser.add_argument('--num_ML_steps', type=int, default=10, help='Number of VAE steps taken for every task model step')
