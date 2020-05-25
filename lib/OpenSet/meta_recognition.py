@@ -20,6 +20,7 @@ def sample(values,all_indices,method,budget):
         _, querry_indices = torch.topk(all_preds, int(budget))
         querry_pool_indices = np.asarray(all_indices)[querry_indices].astype(np.int32)
 
+
         return querry_pool_indices
     else:
         return all_indices
@@ -492,7 +493,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
 
     if samplerMethod=='classifierProbability':
         topk=sample([],openset_dataset_eval_dict['querry_pool_indices'],'NONE',args.budget)
-    elif  samplerMethod=='LatentMeanDistance':
+    elif samplerMethod=='LatentMeanDistance':
         Rvalues=[]
         Rindexes=[]
         for i in range(0,args.num_classes):#openset_outlier_probs:
@@ -503,7 +504,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
             perclassSample=[]
             for i in range(0,args.num_classes):
                 topk=sample(Rvalues[i],Rindexes[i],samplerMethod,int(args.budget/args.num_classes))
-                perclassSample.append(torch.Tensor(topk))
+                perclassSample.append(topk)
 
             topk=torch.cat(perclassSample,dim=0)
         else:
@@ -516,12 +517,14 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
         for i in range(0,args.num_classes):#openset_outlier_probs:
             Rvalues.append(torch.Tensor(openset_outlier_probs[i]))
             Rindexes.append(torch.Tensor(openset_dataset_eval_dict['collect_indexes_per_class'][i]))
+        print("the flaf for per class sample is",args.samplePerClass)
         if  args.samplePerClass:
+            print("Came to sample perclass")
             perclassSample=[]
             for i in range(0,args.num_classes):
                 topk=sample(Rvalues[i],Rindexes[i],samplerMethod,int(args.budget/args.num_classes))
-                perclassSample.append(torch.Tensor(topk))
-            topk=torch.cat(perclassSample,dim=0)
+                perclassSample.extend(topk)
+            topk=perclassSample#torch.cat(perclassSample,dim=0)
         else:
             topk=sample(torch.cat(Rvalues, dim=0),torch.cat(Rindexes, dim=0),samplerMethod,args.budget)
             

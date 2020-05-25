@@ -69,9 +69,19 @@ def cifar_transformer():
     return transforms.Compose([
             transforms.ToTensor(),
                 # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5,],
-                                std=[0.5, 0.5, 0.5]),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+            #                     std=[0.5, 0.5, 0.5]),
         ])
+
+
+def cifar100_transformer():
+    return transforms.Compose([
+            transforms.ToTensor(),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+            #                     std=[0.5, 0.5, 0.5]),
+        ])
+
 def caltech_transformer():
     return transforms.Compose([
          transforms.Resize(size=256),
@@ -180,7 +190,7 @@ def main(args):
         args.num_classes = 10
     elif args.dataset == 'cifar100':
         test_dataloader = data.DataLoader(
-                datasets.CIFAR100(args.data_path, download=True, transform=cifar_transformer(), train=False),
+                datasets.CIFAR100(args.data_path, download=True, transform=cifar100_transformer(), train=False),
              batch_size=args.batch_size, drop_last=False)
 
         train_dataset = CIFAR100(args.data_path)
@@ -297,6 +307,8 @@ def main(args):
             #     task_model.classifier[6] = nn.Sequential(
             #         nn.Linear(4096, 256), nn.ReLU(), nn.Dropout(0.2),
             #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
+        elif args.dataset == 'cifar100':
+            task_model=model.WRN_CIFAR100_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
         else:
             task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
         print("mode",task_model)
@@ -383,6 +395,8 @@ def main(args):
         with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), best_acc))
         sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        with open('sampled_indices_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(sampled_indices, fp)
+        with open('all_saved_indicies_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(all_saved_indicies, fp)
         plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)

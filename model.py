@@ -1171,3 +1171,153 @@ class WRN_caltech_actual(nn.Module):
 
 
 
+class WRN_CIFAR100_actual(nn.Module):
+    """
+    Flexibly sized Wide Residual Network (WRN). Extended to the variational setting.
+    """
+    def __init__(self, device, num_classes, num_colors, args):
+        super(WRN_CIFAR100_actual, self).__init__()
+        self.widen_factor = args.wrn_widen_factor
+        self.depth = args.wrn_depth
+        self.batch_norm = args.batch_norm
+        self.patch_size = args.patch_size
+        self.batch_size = args.batch_size
+        self.num_colors = num_colors
+        self.num_classes = num_classes
+        self.dropout = args.dropout
+        self.device = device
+        self.avgpool = nn.AdaptiveAvgPool2d((8, 8))
+        self.nChannels = [args.wrn_embedding_size, 16 * self.widen_factor, 32 * self.widen_factor,512]
+                          #64 * self.widen_factor]
+
+        print("total nchannekls are",self.nChannels,self)
+        assert ((self.depth - 4) % 6 == 0)
+        self.num_block_layers = int((self.depth - 4) / 6)
+
+        self.variational = False
+        self.joint = False
+
+        if args.train_var:
+            self.variational = True
+            self.num_samples = args.var_samples
+            self.latent_dim = args.var_latent_dim
+
+        if args.joint:
+            self.joint = True
+        print("total nchannekls are",self.nChannels,self.num_block_layers, self.variational,self.num_samples,self.latent_dim,self.batch_norm )
+        #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+
+        self.encoder = make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
+        
+        # nn.Sequential(OrderedDict([
+        #     ('encoder_conv1', nn.Conv2d(num_colors, self.nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)),
+        #     ('encoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[0], self.nChannels[1],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, dropout=self.dropout)),
+        #     ('encoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[2],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[3],
+        #                                        WRNBasicBlock, batchnorm=self.batch_norm, stride=2,
+        #                                        dropout=self.dropout)),
+        #     ('encoder_bn1', nn.BatchNorm2d(self.nChannels[3], eps=self.batch_norm)),
+        #     ('encoder_act1', nn.ReLU(inplace=True))
+        # ]))
+
+        self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,
+                                                                                          self.num_colors)
+        if self.variational:
+            self.latent_mu = nn.Linear(512,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels32768
+            self.latent_std = nn.Linear(512,self.latent_dim, bias=False)#self.enc_spatial_dim_x * self.enc_spatial_dim_y * self.enc_channels,32768
+            self.latent_feat_out = self.latent_dim
+        else:
+            self.latent_feat_out = self.enc_spatial_dim_x * self.enc_spatial_dim_x * self.enc_channels
+            self.latent_dim = self.latent_feat_out
+            print(self.latent_dim)
+
+        if self.joint:
+            self.classifier = nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
+
+            if self.variational:
+                self.latent_decoder = nn.Linear(self.latent_feat_out,32768)
+                #self.enc_spatial_dim_x * self.enc_spatial_dim_y *self.enc_channels, bias=False)
+
+            self.decoder = nn.Sequential(OrderedDict([
+                ('decoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[3], self.nChannels[2],
+                                                   WRNBasicBlock, dropout=self.dropout, batchnorm=self.batch_norm,
+                                                   stride=1)),
+                ('decoder_upsample1', nn.Upsample(scale_factor=2, mode='nearest')),
+                ('decoder_block2', WRNNetworkBlock(self.num_block_layers, self.nChannels[2], self.nChannels[1],
+                                                   WRNBasicBlock, dropout=self.dropout, batchnorm=self.batch_norm,
+                                                   stride=1)),
+                ('decoder_upsample2', nn.Upsample(scale_factor=2, mode='nearest')),
+                ('decoder_block3', WRNNetworkBlock(self.num_block_layers, self.nChannels[1], self.nChannels[0],
+                                                   WRNBasicBlock, dropout=self.dropout, batchnorm=self.batch_norm,
+                                                   stride=1)),
+                ('decoder_bn1', nn.BatchNorm2d(self.nChannels[0], eps=self.batch_norm)),
+                ('decoder_act1', nn.ReLU(inplace=True)),
+                ('decoder_conv1', nn.Conv2d(self.nChannels[0], self.num_colors, kernel_size=3, stride=1, padding=1,
+                                            bias=False))
+            ]))
+        else:
+            self.classifier = nn.Sequential(nn.Linear(self.latent_feat_out, num_classes, bias=False))
+
+    def encode(self, x):
+        x = self.encoder(x)
+        classifier_z = self.avgpool(x)
+        #print("shape of encoder is",x.shape)
+        if self.variational:
+            x = x.view(x.size(0), -1)
+            z_mean = self.latent_mu(x)
+            z_std = self.latent_std(x)
+            return z_mean, z_std,classifier_z
+        else:
+            return x
+
+    def reparameterize(self, mu, std):
+        eps = std.data.new(std.size()).normal_()
+        return eps.mul(std).add(mu)
+
+    def decode(self, z):
+        if self.variational:
+            z = self.latent_decoder(z)
+            z = z.view(z.size(0),512,8,8 )#self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y)
+        #print("z.size is",z.shape)
+        x = self.decoder(z)
+        return x
+
+    def generate(self):
+        z = torch.randn(self.batch_size, self.latent_dim).to(self.device)
+        x = self.decode(z)
+        x = torch.sigmoid(x)
+        return x
+
+    def forward(self, x):
+        if self.variational:
+            z_mean, z_std,classifier_z = self.encode(x)
+            if self.joint:
+                output_samples = torch.zeros(self.num_samples, x.size(0), self.num_colors, self.patch_size,
+                                             self.patch_size).to(self.device)
+                classification_samples = torch.zeros(self.num_samples, x.size(0), self.num_classes).to(self.device)
+            else:
+                output_samples = torch.zeros(self.num_samples, x.size(0), self.num_classes).to(self.device)
+            for i in range(self.num_samples):
+                z = self.reparameterize(z_mean, z_std)
+                #print("z.shape",z.shape)
+                if self.joint:
+                    output_samples[i] = self.decode(z)
+                    classification_samples[i] = self.classifier(z)
+                else:
+                    output_samples[i] = self.classifier(z)
+            if self.joint:
+                return classification_samples, output_samples, z_mean, z_std
+            else:
+                return output_samples, z_mean, z_std
+        else:
+            x = self.encode(x)
+            if self.joint:
+                recon = self.decode(x)
+                classification = self.classifier(x.view(x.size(0), -1))
+                return classification, recon
+            else:
+                output = self.classifier(x.view(x.size(0), -1))
+            return output

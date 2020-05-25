@@ -109,12 +109,12 @@ def train(Dataset,validate,test_dataloader, task_model, criterion, epoch, visdom
             acc=testset_Accuracy(best_model,test_dataloader,args)
             plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
         iterations=iterations+1
-    # # TensorBoard summary logging
+    # ## TensorBoard summary logging
     # writer.add_scalar('training/train_precision@1', top1.avg, epoch)
     # writer.add_scalar('training/train_class_loss', losses.avg, epoch)
     # writer.add_scalar('training/train_average_loss', losses.avg, epoch)
 
-    print(' * Train: Loss {loss.avg:.5f} Prec@1 {top1.avg:.3f}'.format(loss=losses, top1=top1))
+    #print(' * Train: Loss {loss.avg:.5f} Prec@1 {top1.avg:.3f}'.format(loss=losses, top1=top1))
 
 
     return iterations,acc,loss
@@ -135,11 +135,18 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
+    
+    # if args.dataset=='cifar100':
+    #     print("came to cifar1000 optimizer")
+    #     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    # else:
+    #     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    #optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    model.train()
+    #, weight_decay=args.weight_decay)
     labeled_data = read_data(Dataset)
     if args.cuda:
-        print("came to cud")
+        print("came to Train VAR")
         model = model.cuda()
     # Create instances to accumulate losses etc.
     cl_losses = AverageMeter()
@@ -151,8 +158,8 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
     top1 = AverageMeter()
 
     # switch to train mode
+    #model.train()
     model.train()
-
     end = time.time()
     acc=0
     best_acc=0
@@ -166,6 +173,8 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
             print("Came for learning rate change",iter_count)
             for param in optimizer.param_groups:
                 param['lr'] = param['lr'] / 10
+
+
         inp, target = next(labeled_data)
         if args.cuda:
             inp = inp.cuda()
@@ -219,6 +228,7 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
                    epoch+1, iter_count, len(Dataset), batch_time=batch_time,
                    data_time=data_time, loss=losses, cl_loss=cl_losses, top1=top1, KLD_loss=kld_losses))
             plot_visdom(visdom,iter_count,loss.item(),str(int(split*100))+'_loss','loss')
+            model.eval()
             acc=testset_Accuracy(model,test_dataloader,args)
             if acc > best_acc:
                 best_acc = acc
@@ -226,6 +236,7 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
                 best_optimum=optimizer.state_dict()
             #acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
             plot_visdom(visdom,iter_count,acc,str(int(split*100))+'_acc','acc')
+            model.train()
         iterations=iterations+1
 
     # TensorBoard summary logging
@@ -355,11 +366,11 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)#optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    #optimizer = optim.Adam(model.parameters(), lr=0.001, momentum=0.9)
     model.train()
     labeled_data = read_data(Dataset)
     if args.cuda:
-        print("came to cud")
         model = model.cuda()
     # Create instances to accumulate losses etc.
     class_losses = AverageMeter()
@@ -378,7 +389,10 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
     best_acc=0
     # train
     lr_change = [int(len(Dataset)*200),int(len(Dataset)*250),int(len(Dataset)*300)]#self.args.train_iterations // 4
-    total=args.epochs*args.batch_size
+    #total=args.epochs*args.batch_size
+    total=int((args.epochs*args.batch_size*len(Dataset))/128)
+    print("Total Iterations are",total)
+    print("LR Changes are",lr_change)
     for iter_count in range(0,total):
         if (iter_count in lr_change):
             print("Came for learning rate change",iter_count)
@@ -459,6 +473,7 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
 
             plot_visdom(visdom,iter_count,loss.item(),str(int(split*100))+'_loss','loss')
             #acc, val_loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
+            model.eval()
             acc, val_loss=validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
             if acc > best_acc:
                 best_acc = acc
@@ -466,6 +481,7 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
                 best_optimum=optimizer.state_dict()
             #acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
             plot_visdom(visdom,iter_count,acc,str(int(split*100))+'_acc','acc')
+            model.train()
     # TensorBoard summary logging
     # writer.add_scalar('training/train_precision@1', top1.avg, epoch)
     # writer.add_scalar('training/train_class_loss', cl_losses.avg, epoch)
