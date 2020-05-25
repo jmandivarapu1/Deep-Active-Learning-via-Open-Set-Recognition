@@ -387,7 +387,7 @@ def main(args):
         GPUs = GPU.getGPUs()
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
         with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
-        print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
+        # print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
         sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
