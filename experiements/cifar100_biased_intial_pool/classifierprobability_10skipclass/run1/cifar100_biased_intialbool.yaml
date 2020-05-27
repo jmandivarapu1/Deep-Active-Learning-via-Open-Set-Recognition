@@ -10,7 +10,7 @@ weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
 outlier_percentage: 0.5
 
 #VISDOM ENV
-environment: CF100_biased_M1_S1_R1_300
+environment: NEW_biased_M1_S1_Skip10
 #DATASET
 dataset: cifar100 #help='Name of the dataset used.')
 num_classes: 100 #help='Numer of classes in the dataset')

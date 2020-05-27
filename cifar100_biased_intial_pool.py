@@ -31,7 +31,7 @@ from collections import OrderedDict
 # Custom library
 
 
-#torch.cuda.set_device(1)
+torch.cuda.set_device(1)
 
 # Execution flags
 

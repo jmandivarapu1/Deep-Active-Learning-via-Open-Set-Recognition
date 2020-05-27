@@ -9,7 +9,7 @@ dropout: 0.0 #help='Dropout probability. '
 weight_decay:  0.00005 #help='Weight decay value (default 0.0)')
 outlier_percentage: 0.5
 #VISDOM ENV
-environment: NEW_biased_ENCDecoder_M2_S1_Skip10_SGD
+environment: NEW_biased_ENCDecoder_M2_S1_Skip10_ADAM
 #DATASET
 dataset: cifar100 #help='Name of the dataset used.')
 num_classes: 100 #help='Numer of classes in the dataset')
