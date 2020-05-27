@@ -141,8 +141,9 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
     #     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # else:
     #     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    #optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    #ptimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9) #Actual one
     #, weight_decay=args.weight_decay)
     labeled_data = read_data(Dataset)
     if args.cuda:
@@ -366,7 +367,8 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)#optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    #optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     #optimizer = optim.Adam(model.parameters(), lr=0.001, momentum=0.9)
     model.train()
     labeled_data = read_data(Dataset)

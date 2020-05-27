@@ -1,9 +1,9 @@
 import time
 import torch
-from lib.Utility.metrics import AverageMeter
-from lib.Utility.metrics import accuracy
+from Dataparalle_lib.Utility.metrics import AverageMeter
+from Dataparalle_lib.Utility.metrics import accuracy
 import numpy as np
-from lib.Utility.metrics import testset_Accuracy
+from Dataparalle_lib.Utility.metrics import testset_Accuracy
 from sklearn.metrics import accuracy_score
 import pickle
 def plot_visdom(vis,x,y,winName,plotName):
@@ -180,9 +180,11 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, optimiz
                    epoch+1, i, len(Dataset), batch_time=batch_time,
                    data_time=data_time, loss=losses, cl_loss=cl_losses, top1=top1, KLD_loss=kld_losses))
             plot_visdom(visdom,iterations,loss.item(),str(int(split*100))+'_loss','loss')
+            model.eval()
             acc=testset_Accuracy(model,test_dataloader,args)
             #acc, loss = validate(test_dataloader, model, criterion, epoch, visdom, args.device, args)
             plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
+            model.train()
         iterations=iterations+1
 
     # TensorBoard summary logging

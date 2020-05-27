@@ -75,9 +75,9 @@ class MNIST:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.MNIST('datasets/MNIST/train/', train=True, transform=self.train_transforms,
+        trainset = datasets.MNIST('/mnt/iscsi/data/Jay/crossDatasets/MNIST/train/', train=True, transform=self.train_transforms,
                                   target_transform=None, download=True)
-        valset = datasets.MNIST('datasets/MNIST/test/', train=False, transform=self.val_transforms,
+        valset = datasets.MNIST('/mnt/iscsi/data/Jay/crossDatasets/MNIST/test/', train=False, transform=self.val_transforms,
                                 target_transform=None, download=True)
 
         return trainset, valset
@@ -168,9 +168,9 @@ class FashionMNIST:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.FashionMNIST('datasets/FashionMNIST/train/', train=True, transform=self.train_transforms,
+        trainset = datasets.FashionMNIST('/mnt/iscsi/data/Jay/crossDatasets/FashionMNIST/train/', train=True, transform=self.train_transforms,
                                          target_transform=None, download=True)
-        valset = datasets.FashionMNIST('datasets/FashionMNIST/test/', train=False, transform=self.val_transforms,
+        valset = datasets.FashionMNIST('/mnt/iscsi/data/Jay/crossDatasets/FashionMNIST/test/', train=False, transform=self.val_transforms,
                                        target_transform=None, download=True)
 
         return trainset, valset
@@ -260,9 +260,9 @@ class KMNIST:
         Returns:
              torch.utils.data.TensorDataset: trainset, valset
         """
-        trainset = datasets.KMNIST('datasets/KMNIST/train/', train=True, transform=self.train_transforms,
+        trainset = datasets.KMNIST('/mnt/iscsi/data/Jay/crossDatasets/KMNIST/train/', train=True, transform=self.train_transforms,
                                    target_transform=None, download=True)
-        valset = datasets.KMNIST('datasets/KMNIST/test/', train=False, transform=self.val_transforms,
+        valset = datasets.KMNIST('/mnt/iscsi/data/Jay/crossDatasets/KMNIST/test/', train=False, transform=self.val_transforms,
                                  target_transform=None, download=True)
 
         return trainset, valset
@@ -315,7 +315,7 @@ class AudioMNIST:
 
     def __init__(self, is_gpu, args):
         self.num_classes = 10
-        self.__path = os.path.expanduser('datasets/AudioMNIST')
+        self.__path = os.path.expanduser('/mnt/iscsi/data/Jay/crossDatasets/AudioMNIST')
         self.__download()
 
         self.trainset, self.valset = self.get_dataset(args.patch_size)
@@ -560,9 +560,9 @@ class cifar10:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.CIFAR10('datasets/CIFAR10/train/', train=True, transform=self.train_transforms,
+        trainset = datasets.CIFAR10('/mnt/iscsi/data/Jay/crossDatasets/CIFAR10/train/', train=True, transform=self.train_transforms,
                                     target_transform=None, download=True)
-        valset = datasets.CIFAR10('datasets/CIFAR10/test/', train=False, transform=self.val_transforms,
+        valset = datasets.CIFAR10('/mnt/iscsi/data/Jay/crossDatasets/CIFAR10/test/', train=False, transform=self.val_transforms,
                                   target_transform=None, download=True)
 
         return trainset, valset
@@ -645,9 +645,9 @@ class CIFAR100:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.CIFAR100('datasets/CIFAR100/train/', train=True, transform=self.train_transforms,
+        trainset = datasets.CIFAR100('/mnt/iscsi/data/Jay/crossDatasets/CIFAR100/train/', train=True, transform=self.train_transforms,
                                      target_transform=None, download=True)
-        valset = datasets.CIFAR100('datasets/CIFAR100/test/', train=False, transform=self.val_transforms,
+        valset = datasets.CIFAR100('/mnt/iscsi/data/Jay/crossDatasets/CIFAR100/test/', train=False, transform=self.val_transforms,
                                    target_transform=None, download=True)
 
         return trainset, valset
@@ -728,11 +728,11 @@ class SVHN:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.SVHN('datasets/SVHN/train/', split='train', transform=self.train_transforms,
+        trainset = datasets.SVHN('/mnt/iscsi/data/Jay/crossDatasets/SVHN/train/', split='train', transform=self.train_transforms,
                                  target_transform=None, download=True)
-        valset = datasets.SVHN('datasets/SVHN/test/', split='test', transform=self.val_transforms,
+        valset = datasets.SVHN('/mnt/iscsi/data/Jay/crossDatasets/SVHN/test/', split='test', transform=self.val_transforms,
                                target_transform=None, download=True)
-        extraset = datasets.SVHN('datasets/SVHN/extra', split='extra', transform=self.train_transforms,
+        extraset = datasets.SVHN('/mnt/iscsi/data/Jay/crossDatasets/SVHN/extra', split='extra', transform=self.train_transforms,
                                  target_transform=None, download=True)
 
         trainset = torch.utils.data.ConcatDataset([trainset, extraset])
@@ -817,9 +817,9 @@ class STL10:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.STL10('datasets/STL10/train/', split='train', transform=self.train_transforms,
+        trainset = datasets.STL10('/mnt/iscsi/data/Jay/crossDatasets/STL10/train/', split='train', transform=self.train_transforms,
                                   target_transform=None, download=True)
-        valset = datasets.STL10('datasets/STL10/test/', split='test', transform=self.val_transforms,
+        valset = datasets.STL10('/mnt/iscsi/data/Jay/crossDatasets/STL10/test/', split='test', transform=self.val_transforms,
                                 target_transform=None, download=True)
 
         return trainset, valset
@@ -904,9 +904,9 @@ class ImageNet:
              torch.utils.data.TensorDataset: trainset, valset
         """
 
-        trainset = datasets.ImageNet('datasets/ImageNet/train/', split='train', transform=self.train_transforms,
+        trainset = datasets.ImageNet('/mnt/iscsi/data/Jay/crossDatasets/ImageNet/train/', split='train', transform=self.train_transforms,
                                      target_transform=None, download=True)
-        valset = datasets.ImageNet('datasets/ImageNet/val/', split='val', transform=self.val_transforms,
+        valset = datasets.ImageNet('/mnt/iscsi/data/Jay/crossDatasets/ImageNet/val/', split='val', transform=self.val_transforms,
                                    target_transform=None, download=True)
 
         return trainset, valset

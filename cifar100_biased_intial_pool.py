@@ -30,7 +30,8 @@ from collections import OrderedDict
 
 # Custom library
 
-torch.cuda.set_device(1)
+
+#torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -67,6 +68,23 @@ def create_flders(splits,args):
     #     os.makedirs(Flags['sPath']+environment)
     return Flags
 
+
+def plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices):
+    #Getting the statistics of the entire dataset
+    count_idx_target=[]
+    for index in sampled_indices:
+        count_idx_target.append(all_saved_indicies[index])
+    counter=collections.Counter(count_idx_target)
+    x=collections.OrderedDict(sorted(counter.items()))
+    a=np.array(x.keys())
+    b=list(x.values())
+    acc_options = dict(fillarea=True,width=400,height=400,xlabel='Classes',ylabel='Per Class Count',title=str('Sampler Class Analysis'))
+    if split:
+        vis.bar(X=b,win='Sampled'+str(int(split*100)),opts=acc_options)
+    else:
+        vis.bar(X=b,win='Sampled_'+str(int(split*100)),opts=acc_options)
+        
+        
 def config_to_str(config):
     attrs = vars(config)
     string_val = "Config: -----\n"
@@ -326,7 +344,12 @@ def main(args):
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset, 
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
-        
+         #works only for cifar10
+        if args.dataset =='cifar10':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar10.targets)
+        elif args.dataset =='cifar100':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
+
         print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
         best_acc,Best_Model,best_optimum=train(querry_dataloader,
                     validate,
@@ -388,7 +411,8 @@ def main(args):
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
         with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         # print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
-        sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, 

@@ -9,6 +9,7 @@ example usage:
 --resume /path/checkpoint.pth.tar --var-samples 100 -a MLP
 """
 import torch
+import pickle
 from torchvision import datasets, transforms,models
 import torch.utils.data.sampler  as sampler
 import torch.utils.data as data
@@ -36,7 +37,7 @@ import visualization
 from torchsummary import summary
 import GPUtil as GPU
 # Custom library
-# torch.cuda.set_device(1)
+torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -142,15 +143,15 @@ def create_flders(splits,args):
 
 
     #remove existing directory
-    if os.path.exists(Flags['sPath']) and os.path.isdir(Flags['sPath']):
-        shutil.rmtree(Flags['sPath'])
+    # if os.path.exists(Flags['sPath']) and os.path.isdir(Flags['sPath']):
+    #     shutil.rmtree(Flags['sPath'])
     
     #create the directory
-    os.makedirs(Flags['sPath'])
+    #os.makedirs(Flags['sPath'])
     for directory in Dir_Use:
         if not os.path.exists(Flags['sPath']+str(int(directory*100))):
             os.makedirs(Flags['sPath']+str(int(directory*100)))
-            Flags[str(int(directory*100))]=Flags['sPath']+str(int(directory*100))+'/'
+        Flags[str(int(directory*100))]=Flags['sPath']+str(int(directory*100))+'/'
 
 
     # if not os.path.exists(Flags['sPath']):
@@ -205,7 +206,7 @@ def main(args):
     environment=args.environment
     cfg = {"server": "jmandivarapu1@retina.cs.gsu.edu","port": 8097}
     vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"])
-    vis.delete_env(args.environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
+    #vis.delete_env(args.environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
     vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"],env=environment)
 
     # vis = visdom.Visdom()
@@ -382,56 +383,81 @@ def main(args):
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset, 
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
-        task_model.load_state_dict(torch.load('best_74.pt'))
+        task_model.load_state_dict(torch.load('/mnt/iscsi/data/Jay/ActiveLearning/CF10_Crossdatasets/10/best_78.pt'))
         save_path=Flags[str(int(split*100))]
         sampled_indices=WieBullSampler(task_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        # print("length od the Unlabled loader",len(unlabeled_dataloader)*128) 
+        sys.exit()
+        
+        #works only for cifar10
+        if args.dataset =='cifar10':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar10.targets)
+        elif args.dataset =='cifar100':
+            all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
+
         print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
-        optimizer = torch.optim.Adam(task_model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-        while epoch < args.epochs:
-            if (epoch in lr_change):
-                for param in optimizer.param_groups:
-                    param['lr'] = param['lr'] / 10
-            # train
-            finished_iter,acc,loss=train(querry_dataloader,
+        best_acc,Best_Model,best_optimum=train(querry_dataloader,
                     validate,
                     test_dataloader,
                     task_model, 
                     criterion, 
                     epoch, 
-                    optimizer,
+                    # optimizer,
                     vis, 
-                    args.device, 
                     args,
                     split,
                     iterations)
+
+        save_path=Flags[str(int(split*100))]
+        torch.save(Best_Model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
+        save_checkpoint({'epoch': epoch,'state_dict': Best_Model.state_dict(),'best_acc': best_acc,'optimizer': best_optimum},
+                        best_acc, save_path) 
+        # optimizer = torch.optim.Adam(task_model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        # while epoch < args.epochs:
+        #     if (epoch in lr_change):
+        #         for param in optimizer.param_groups:
+        #             param['lr'] = param['lr'] / 10
+        #     # train
+        #     finished_iter,acc,loss=train(querry_dataloader,
+        #             validate,
+        #             test_dataloader,
+        #             task_model, 
+        #             criterion, 
+        #             epoch, 
+        #             optimizer,
+        #             vis, 
+        #             args.device, 
+        #             args,
+        #             split,
+        #             iterations)
         
-            # evaluate on validation set
-            # acc, loss = validate(, task_model, criterion, epoch, vis, args.device, args)
-            iterations=finished_iter
+        #     # evaluate on validation set
+        #     # acc, loss = validate(, task_model, criterion, epoch, vis, args.device, args)
+        #     iterations=finished_iter
             
-            # increment epoch counters
-            epoch += 1
+        #     # increment epoch counters
+        #     epoch += 1
            
-                    # remember best prec@1 and save checkpoint
-            is_best = best_acc < acc
-            if is_best:
-                best_acc=acc
-                save_path=Flags[str(int(split*100))]
-                best_model=task_model
-                torch.save(task_model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
-                save_checkpoint({'epoch': epoch,
-                                'state_dict': task_model.state_dict(),
-                                'best_prec': best_prec,
-                                'best_loss': best_loss,
-                                'optimizer': optimizer.state_dict()},
-                                is_best, save_path)
+        #             # remember best prec@1 and save checkpoint
+        #     is_best = best_acc < acc
+        #     if is_best:
+        #         best_acc=acc
+        #         save_path=Flags[str(int(split*100))]
+        #         best_model=task_model
+        #         torch.save(task_model.state_dict(),os.path.join(Flags[str(int(split*100))],"best_"+str(int(best_acc))+".pt"))
+        #         save_checkpoint({'epoch': epoch,
+        #                         'state_dict': task_model.state_dict(),
+        #                         'best_prec': best_prec,
+        #                         'best_loss': best_loss,
+        #                         'optimizer': optimizer.state_dict()},
+        #                         is_best, save_path)
         accuracies.append(best_acc)
         print("All accuracies until now",accuracies)
         GPUs = GPU.getGPUs()
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
-        with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
-        print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
-        sampled_indices=WieBullSampler(best_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        #with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
+        #print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
+        sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, 

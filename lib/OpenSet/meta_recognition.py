@@ -1,4 +1,5 @@
 import torch
+import pickle
 import numpy as np
 import libmr
 import collections
@@ -704,7 +705,11 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
         openset_outlier_probs_dict[openset_datasets_names[od]] = openset_outlier_probs
         openset_classification_dict[openset_datasets_names[od]] = openset_classification
         openset_entropy_classification_dict[openset_datasets_names[od]] = openset_entropy_classification
-
+    
+    with open(save_path+'openset_dataset_eval_dicts', 'wb') as fp:pickle.dump(openset_dataset_eval_dicts, fp)
+    with open(save_path+'openset_outlier_probs_dict', 'wb') as fp:pickle.dump(openset_outlier_probs_dict, fp)
+    with open(save_path+'openset_classification_dict', 'wb') as fp:pickle.dump(openset_classification_dict, fp)
+    with open(save_path+'openset_entropy_classification_dict', 'wb') as fp:pickle.dump(openset_entropy_classification_dict, fp)
     # print outlier rejection values for all unseen unknown datasets
     for other_data_name, other_data_dict in openset_classification_dict.items():
         print(other_data_name + ' EVT outlier percentage: ' +
@@ -817,6 +822,7 @@ def eval_var_openset_all_datasets(model, data_loader, num_classes, device,args, 
 
             # calculate the mean and std. Only removes a dummy dimension if number of variational samples is set to one.
             out_mean = torch.mean(torch.mean(out_samples, dim=0), dim=0)
+          
             # preds = out_mean.cpu().data
             all_preds.extend(out_mean.cpu().data)
             #all_indices.extend(indexes)
@@ -856,20 +862,21 @@ def eval_var_openset_all_datasets(model, data_loader, num_classes, device,args, 
 
     # with open('outfile', 'wb') as fp:pickle.dump(d, fp)
 
-    all_preds=[]
+    all_preds_=[]
     for i in range(0,len(d['all_preds'])):
         idx=torch.argmax(d['all_preds'][i]).item()
-        all_preds.append(d['all_preds'][i][idx])#.data.item())
-    all_preds
-    all_preds = torch.stack(all_preds)
-    all_preds = all_preds.view(-1)
+        all_preds_.append(d['all_preds'][i][idx])#.data.item())
+    
+    all_preds_ = torch.stack(all_preds)
+    all_preds_ = all_preds_.view(-1)
     # need to multiply by -1 to be able to use torch.topk 
-    all_preds *= -1
+    all_preds_ *= -1
 
     # select the points which the discriminator things are the most likely to be unlabeled
-    _, querry_indices = torch.topk(all_preds, int(args.budget))
+    _, querry_indices = torch.topk(all_preds_, int(args.budget))
     #querry_pool_indices = np.asarray(all_indices)[querry_indices]
 
+    print("the output of querry indicssis",querry_indices)
     # Return a dictionary of stored values.
     # with open('outfile', 'wb') as fp:pickle.dump(d, fp)
     return {"encoded_mus": encoded_mus, "encoded_sigmas": encoded_sigmas,

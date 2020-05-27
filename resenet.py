@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 # from torch.utils import load_state_dict_from_url
-
-
+from torchvision import models
+from collections import OrderedDict
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
            'wide_resnet50_2', 'wide_resnet101_2']
@@ -238,12 +238,15 @@ def get_feat_size(block, spatial_size, ncolors=3):
     """
 
     x = torch.randn(2, ncolors, spatial_size, spatial_size)
-    print("block isss",block,ncolors, spatial_size, spatial_size)
+    #print("block isss",block,ncolors, spatial_size, spatial_size)
     out = block(x)
+    #print("block put",out)
+    #print(out.size())
     num_feat = out.size(1)
     spatial_dim_x = out.size(2)
     spatial_dim_y = out.size(3)
-
+    
+    #sys.exit()
     return num_feat, spatial_dim_x, spatial_dim_y
 
 def resnet18(pretrained=False, progress=True, **kwargs):
@@ -292,13 +295,14 @@ class Resenet(nn.Module):
 
         if args.joint:
             self.joint = True
-
+       
         
         #make_layers([64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],batch_norm=True)
-        # model=models.resnet18(pretrained=False)
+        #model=models.resnet18(pretrained=False)
         # del model.avgpool
         # del model.fc
-        self.encoder = resnet18(pretrained=False)#nn.Sequential(*[model for i in range(1)])
+        model=models.resnet18(pretrained=True)#=args.num_classes)
+        self.encoder =  nn.Sequential(*list(model.children())[:-2])#nn.Sequential(*[model.features[i] for i in range(44)])#models.resnet18(pretrained=False,num_classes=512)#nn.Sequential(*[model.features[i] for i in range(44)])#resnet18(pretrained=False)#nn.Sequential(*[model for i in range(1)])
 
         self.enc_channels, self.enc_spatial_dim_x, self.enc_spatial_dim_y = get_feat_size(self.encoder, self.patch_size,self.num_colors)
         if self.variational:
@@ -317,7 +321,7 @@ class Resenet(nn.Module):
                 self.latent_decoder = nn.Linear(self.latent_feat_out, self.enc_spatial_dim_x * self.enc_spatial_dim_y *
                                                 self.enc_channels, bias=False)
 
-            self.decoder =      nn.Sequential(OrderedDict([
+            self.decoder = nn.Sequential(OrderedDict([
                 ('decoder_block1', WRNNetworkBlock(self.num_block_layers, self.nChannels[3], self.nChannels[2],
                                                    WRNBasicBlock, dropout=self.dropout, batchnorm=self.batch_norm,
                                                    stride=1)),
@@ -358,11 +362,12 @@ class Resenet(nn.Module):
     def encode(self, x):
         
         x = self.encoder(x)
+        z=x
         if self.variational:
             x = x.view(x.size(0), -1)
             z_mean = self.latent_mu(x)
             z_std = self.latent_std(x)
-            return z_mean, z_std
+            return z_mean, z_std,z
         else:
             return x
 
@@ -400,7 +405,7 @@ class Resenet(nn.Module):
 
     def forward(self, x):
         if self.variational:
-            z_mean, z_std = self.encode(x)
+            z_mean, z_std,_ = self.encode(x)
             if self.joint:
                 output_samples = torch.zeros(self.num_samples, x.size(0), self.num_colors, self.patch_size,
                                              self.patch_size).to(self.device)

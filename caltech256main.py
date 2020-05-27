@@ -29,7 +29,7 @@ import collections
 from collections import OrderedDict
 
 # Custom library
-torch.cuda.set_device(1)
+#torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -146,7 +146,7 @@ def main(args):
             if args.joint:
                 from Dataparalle_lib.Training.train import train_joint as train
                 from Dataparalle_lib.Training.validate import validate_joint as validate
-                from lib.Training.loss_functions import loss_function_joint as criterion
+                from Dataparalle_lib.Training.loss_functions import loss_function_joint as criterion
             else:
                 from Dataparalle_lib.Training.train import train as train
                 from Dataparalle_lib.Training.validate import validate as validate
@@ -300,12 +300,12 @@ def main(args):
         best_acc=0
         best_loss = random.getrandbits(128)
         lr_change=[150,250]
-        plot_per_class(vis,querry_dataloader,True,split)
+        #plot_per_class(vis,querry_dataloader,True,split)
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
         if args.dataset == 'caltech256':
-            task_model=models.vgg16_bn(pretrained=True)#model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
+            task_model=models.vgg16(pretrained=True)#model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
             for param in task_model.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
                 # n_inputs = 25088#task_model.classifier[6].in_features
                 # Add on classifier
                 task_model.classifier[6] = nn.Sequential(
