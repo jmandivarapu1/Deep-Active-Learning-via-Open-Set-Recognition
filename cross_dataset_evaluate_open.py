@@ -37,7 +37,7 @@ import visualization
 from torchsummary import summary
 import GPUtil as GPU
 # Custom library
-torch.cuda.set_device(1)
+#torch.cuda.set_device(1)
 
 # Execution flags
 
@@ -61,7 +61,7 @@ def get_the_datasets(args):
         args.num_val = 5000
         args.num_images = 50000
         args.budget = 2500
-        args.initial_budget = 5000
+        args.initial_budget = 7500
         args.num_classes = 100
 
     elif args.dataset == 'imagenet':
@@ -143,11 +143,10 @@ def create_flders(splits,args):
 
 
     #remove existing directory
-    # if os.path.exists(Flags['sPath']) and os.path.isdir(Flags['sPath']):
-    #     shutil.rmtree(Flags['sPath'])
+    if os.path.exists(Flags['sPath']) and os.path.isdir(Flags['sPath']):shutil.rmtree(Flags['sPath'])
     
     #create the directory
-    #os.makedirs(Flags['sPath'])
+    os.makedirs(Flags['sPath'])
     for directory in Dir_Use:
         if not os.path.exists(Flags['sPath']+str(int(directory*100))):
             os.makedirs(Flags['sPath']+str(int(directory*100)))
@@ -206,7 +205,7 @@ def main(args):
     environment=args.environment
     cfg = {"server": "jmandivarapu1@retina.cs.gsu.edu","port": 8097}
     vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"])
-    #vis.delete_env(args.environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
+    vis.delete_env(args.environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
     vis = visdom.Visdom('http://' + cfg["server"], port = cfg["port"],env=environment)
 
     # vis = visdom.Visdom()
@@ -255,7 +254,7 @@ def main(args):
              batch_size=args.batch_size, drop_last=False)
 
         train_dataset = CIFAR100(args.data_path)
-        print("=========CIFAR 100===============")
+        print("=========CIFAR 100===============**********")
         args.num_val = 5000
         args.num_images = 50000
         args.budget = 2500
@@ -343,12 +342,18 @@ def main(args):
     current_indices = list(initial_indices)
 
     accuracies = []
-
+    mx_pool_smple=[]
     Flags=create_flders(splits,args)
     print(Flags)
     
-    
-
+    Mixed_Data_Pool_KMNIST=KMNIST(args.data_path)
+    kmnist_indices=set(np.arange(len(Mixed_Data_Pool_KMNIST)))
+    rndm_sample = random.sample(list(all_indices), 10000)
+    mxd_pool = data.sampler.SubsetRandomSampler(rndm_sample)
+    mixed_pool_unlabeled_pool = data.DataLoader(Mixed_Data_Pool_KMNIST, sampler=mxd_pool, batch_size=args.batch_size, drop_last=False)
+    mxpool_datasets=[mixed_pool_unlabeled_pool]
+    print("len if mix datasets is",len(mixed_pool_unlabeled_pool)*args.batch_size)
+    #sys.exit()
     for split in splits:
         num_colors=3
         iterations=0
@@ -383,18 +388,16 @@ def main(args):
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset, 
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
-        task_model.load_state_dict(torch.load('/mnt/iscsi/data/Jay/ActiveLearning/CF10_Crossdatasets/10/best_78.pt'))
+        #task_model.load_state_dict(torch.load('/mnt/iscsi/data/Jay/ActiveLearning/CF10_Crossdatasets/10/best_78.pt'))
+        #task_model.load_state_dict(torch.load('/mnt/iscsi/data/Jay/ActiveLearning/F10_M1_S1_R1_Enco_ADAM/best_79.pt'))
         save_path=Flags[str(int(split*100))]
-        sampled_indices=WieBullSampler(task_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
-        # print("length od the Unlabled loader",len(unlabeled_dataloader)*128) 
-        sys.exit()
-        
+       
         #works only for cifar10
         if args.dataset =='cifar10':
             all_saved_indicies=list(unlabeled_dataloader.dataset.cifar10.targets)
         elif args.dataset =='cifar100':
             all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
-
+        print("length od the querry_dataloader",len(querry_dataloader)*128)  
         print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
         best_acc,Best_Model,best_optimum=train(querry_dataloader,
                     validate,
@@ -457,12 +460,22 @@ def main(args):
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
         #with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         #print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), acc))
-        sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
+        #sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path,mxpool_datasets)
+        sampled_indices,collect_other=WieBullSampler(task_model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path,mixed_pool_unlabeled_pool)
+        for lm in range(0,len(collect_other)):
+            collect_other[lm]=collect_other[lm]-100000
+        print("total indexes to be removed",len(collect_other))
+        mx_pool_smple.append(len(collect_other))
+        unlabeled_mxd_pool_indices = np.setdiff1d(list(rndm_sample), collect_other)
+        mxd_pool = data.sampler.SubsetRandomSampler(unlabeled_mxd_pool_indices)
+        mixed_pool_unlabeled_pool = data.DataLoader(Mixed_Data_Pool_KMNIST, sampler=mxd_pool, batch_size=args.batch_size, drop_last=False)
+        print("length od the mixed_pool_unlabeled_pool loader",len(mixed_pool_unlabeled_pool)*128) 
+        #sys.exit()
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, 
                 batch_size=args.batch_size, drop_last=True)
-        
+
     torch.save(accuracies, os.path.join(args.out_path, args.log_name))
 
 if __name__ == '__main__':

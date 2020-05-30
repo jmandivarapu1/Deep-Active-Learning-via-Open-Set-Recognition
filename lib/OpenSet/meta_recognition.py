@@ -25,6 +25,47 @@ def sample(values,all_indices,method,budget):
         return querry_pool_indices
     else:
         return all_indices
+
+
+def wiebull_sample(values,all_indices,method,budget):
+
+    if method!='NONE':
+        all_preds = values
+        all_indices = all_indices
+        # all_preds = torch.stack(all_preds)
+        all_preds = all_preds.view(-1)
+        # need to multiply by -1 to be able to use torch.topk 
+        #all_preds *= -1
+
+        # select the points which the discriminator things are the most likely to be unlabeled
+        querry_values, querry_indices = torch.topk(all_preds, int(budget))
+        querry_pool_indices = np.asarray(all_indices)[querry_indices].astype(np.int32)
+
+
+        return querry_pool_indices,querry_values
+    else:
+        return all_indices
+
+def wiebull_sample_mixedpool(values,all_indices,method,budget):
+
+    if method!='NONE':
+        all_preds = values
+        all_indices = all_indices
+        # all_preds = torch.stack(all_preds)
+        all_preds = all_preds.view(-1)
+        # need to multiply by -1 to be able to use torch.topk 
+        #all_preds *= -1
+
+        # select the points which the discriminator things are the most likely to be unlabeled
+        querry_values, querry_indices = torch.topk(all_preds, int(budget))
+        querry_pool_indices = np.asarray(all_indices)[querry_indices].astype(np.int32)
+
+
+        return querry_pool_indices,querry_values
+    else:
+        return all_indices
+
+        
 def get_means(tensors_list):
     """
     Calculate the mean of a list of tensors for each tensor in the list. In our case the list typically contains
@@ -584,7 +625,7 @@ def Weibull_Sampler(model,train_loader,test_dataloader,val_loader,unlabeled_data
     return topk
 
 
-def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,eval_var_dataset,args,save_path):
+def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,eval_var_dataset,args,save_path,mxpool_datasets):
 
     dataset_eval_dict_train = eval_var_dataset(model, train_loader,args.num_classes, args.device,latent_var_samples=args.var_samples, model_var_samples=args.model_samples)
     print("Training accuracy: ", dataset_eval_dict_train["accuracy"])#"accuracy"])
@@ -656,7 +697,82 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
 
     print(args.dataset + '(trained) EVT outlier percentage: ' +str(dataset_classification_correct["outlier_percentage"][EVT_prior_index]))
     print(args.dataset + '(trained) entropy outlier percentage: ' +str(dataset_entropy_classification_correct["entropy_outlier_percentage"][entropy_threshold_index]))
-    
+    ##########################################################################################################################################
+    #                           START ON THE RESt OF TRAINING SET
+    ##########################################################################################################################################
+    od=0
+    openset_dataset='cifar10'
+    openset_datasets_names = args.openset_datasets.strip().split(',')
+    openset_sampler_methods=args.samplerMethod.strip().split(',')
+    samplerMethod=args.sampler
+    print("The Sampling Method is",samplerMethod)
+    openset_datasets = []
+    # Repeat process for open set recognition on unseen datasets (
+    openset_dataset_eval_dicts = collections.OrderedDict()
+    openset_outlier_probs_dict = collections.OrderedDict()
+    openset_classification_dict = collections.OrderedDict()
+    openset_entropy_classification_dict = collections.OrderedDict()
+    print("Evaluating on rest of the tain set This may take a while...",len(test_dataloader)*128)
+    openset_dataset_eval_dict = eval_var_openset_dataset(model,unlabeled_dataloader, args.num_classes,
+                                                        args.device,args, latent_var_samples=args.var_samples,
+                                                        model_var_samples=args.model_samples)
+
+    openset_distances_to_z_means = calc_distances_to_means(mean_zs, openset_dataset_eval_dict["zs"],'cosine')#args.distance_function)
+
+    openset_outlier_probs = calc_outlier_probs(weibull_models, openset_distances_to_z_means)
+
+    # getting outlier classification accuracies across the entire datasets
+    openset_classification = calc_openset_classification(openset_outlier_probs, args.num_classes,num_outlier_threshs=100)
+
+    openset_entropy_classification = calc_entropy_classification(openset_dataset_eval_dict["out_entropy"],max_entropy, args,num_outlier_threshs=100)
+
+    if samplerMethod=='classifierProbability':
+        topk=sample([],openset_dataset_eval_dict['querry_pool_indices'],'NONE',args.budget)
+    elif samplerMethod=='LatentMeanDistance':
+        Rvalues=[]
+        Rindexes=[]
+        for i in range(0,args.num_classes):#openset_outlier_probs:
+            Rvalues.append(torch.Tensor(openset_distances_to_z_means[i]))
+            Rindexes.append(torch.Tensor(openset_dataset_eval_dict['collect_indexes_per_class'][i]))
+        if  args.samplePerClass:
+            print("came to sample per class")
+            perclassSample=[]
+            for i in range(0,args.num_classes):
+                topk=sample(Rvalues[i],Rindexes[i],samplerMethod,int(args.budget/args.num_classes))
+                perclassSample.append(topk)
+
+            topk=torch.cat(perclassSample,dim=0)
+        else:
+            topk=sample(torch.cat(Rvalues, dim=0),torch.cat(Rindexes, dim=0),samplerMethod,args.budget)
+            
+    elif  samplerMethod=='WiebullOutlierProbs':
+        print("came to WiebullOutlierProbs sampling")
+        Rvalues=[]
+        Rindexes=[]
+        for i in range(0,args.num_classes):#openset_outlier_probs:
+            Rvalues.append(torch.Tensor(openset_outlier_probs[i]))
+            Rindexes.append(torch.Tensor(openset_dataset_eval_dict['collect_indexes_per_class'][i]))
+        print("the flaf for per class sample is",args.samplePerClass)
+        if  args.samplePerClass:
+            print("Came to sample perclass")
+            perclassSample=[]
+            for i in range(0,args.num_classes):
+                topk=sample(Rvalues[i],Rindexes[i],samplerMethod,int(args.budget/args.num_classes))
+                perclassSample.extend(topk)
+            topk=perclassSample#torch.cat(perclassSample,dim=0)
+        else:
+            topk,querry_values=wiebull_sample(torch.cat(Rvalues, dim=0),torch.cat(Rindexes, dim=0),samplerMethod,args.budget)
+            
+    # elif samplerMethod=='Entropy':
+    #     topk=sample(openset_dataset_eval_dict,openset_classification,samplerMethod)
+    # elif samplerMethod=='openSet':
+    #     topk=sample(openset_dataset_eval_dict,openset_entropy_classification,samplerMethod)
+
+    # dictionary of dictionaries: per datasetname one dictionary with respective values
+    openset_dataset_eval_dicts['cifar10'] = openset_dataset_eval_dict
+    openset_outlier_probs_dict['cifar10'] = openset_outlier_probs
+    openset_classification_dict['cifar10'] = openset_classification
+    openset_entropy_classification_dict['cifar10'] = openset_entropy_classification
     ##########################################################################################################################################
     #                           START ON THE RESt OF TRAINING SET
     ##########################################################################################################################################
@@ -671,12 +787,13 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
         openset_data_init_method = getattr(datasets, openset_dataset)
         openset_datasets.append(openset_data_init_method(torch.cuda.is_available(), args))
     # Repeat process for open set recognition on unseen datasets (
-    openset_dataset_eval_dicts = collections.OrderedDict()
-    openset_outlier_probs_dict = collections.OrderedDict()
-    openset_classification_dict = collections.OrderedDict()
-    openset_entropy_classification_dict = collections.OrderedDict()
-    topk=[]
+    # openset_dataset_eval_dicts = collections.OrderedDict()
+    # openset_outlier_probs_dict = collections.OrderedDict()
+    # openset_classification_dict = collections.OrderedDict()
+    # openset_entropy_classification_dict = collections.OrderedDict()
+    # topk=[]
     for od, openset_dataset in enumerate(openset_datasets):
+        num_classes=10
         if openset_datasets_names[od]=='cifar10':
             num_classes=10
         elif openset_datasets_names[od]=='CIFAR100':
@@ -684,7 +801,7 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
         print("Evaluating openset dataset: " + openset_datasets_names[od] + ". This may take a while...",openset_dataset)
         print("Evaluating on rest of the tain set This may take a while...",len(test_dataloader)*128)
         print("Evaluating openset dataset: " + openset_datasets_names[od] + ". This may take a while...")
-        openset_dataset_eval_dict = eval_var_openset_all_datasets(model, openset_dataset.val_loader, num_classes,
+        openset_dataset_eval_dict = eval_var_openset_all_datasets(model, mxpool_datasets, num_classes,
                                                          args.device,args, latent_var_samples=args.var_samples,
                                                          model_var_samples=args.model_samples)
 
@@ -706,11 +823,49 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
         openset_classification_dict[openset_datasets_names[od]] = openset_classification
         openset_entropy_classification_dict[openset_datasets_names[od]] = openset_entropy_classification
     
-    with open(save_path+'openset_dataset_eval_dicts', 'wb') as fp:pickle.dump(openset_dataset_eval_dicts, fp)
-    with open(save_path+'openset_outlier_probs_dict', 'wb') as fp:pickle.dump(openset_outlier_probs_dict, fp)
-    with open(save_path+'openset_classification_dict', 'wb') as fp:pickle.dump(openset_classification_dict, fp)
-    with open(save_path+'openset_entropy_classification_dict', 'wb') as fp:pickle.dump(openset_entropy_classification_dict, fp)
+
+    
+    #print('sjkkjdsb',openset_dataset_eval_dicts['KMNIST']['collect_indexes_per_class'][0])
+    #with open('openset_dataset_eval_dicts', 'wb') as fp:pickle.dump(openset_dataset_eval_dicts, fp)
+    MpoolRvalues=[]
+    MpoolRindexes=[]
+    for i in range(0,args.num_classes):#openset_outlier_probs:
+        MpoolRvalues.append(torch.Tensor(openset_outlier_probs_dict['cifar10'][i]))
+        MpoolRindexes.append(torch.Tensor(openset_dataset_eval_dicts['cifar10'] ['collect_indexes_per_class'][i]))
+        MpoolRvalues.append(torch.Tensor(openset_outlier_probs_dict['KMNIST'][i]))
+        MpoolRindexes.append(torch.Tensor(openset_dataset_eval_dicts['KMNIST']['collect_indexes_per_class'][i]))
+
+    Mpooltopk,Mpoolquerry_values=wiebull_sample(torch.cat(MpoolRvalues, dim=0),torch.cat(MpoolRindexes, dim=0),samplerMethod,args.budget)
+    sumup=0
+    collect_other=[]
+    for j in range(0,len(Mpooltopk)):
+        if Mpooltopk[j]>=100000:
+            #print(Mpoolquerry_values[j])
+            collect_other.append(Mpooltopk[j])
+            sumup=sumup+1
+
+    print("The achieved threshold is",sumup)
+    # with open('Mpooltopk', 'wb') as fp:pickle.dump(Mpooltopk, fp)
+    # with open('Mpoolquerry_values', 'wb') as fp:pickle.dump(Mpoolquerry_values, fp)
+    # with open(save_path+'openset_dataset_eval_dicts', 'wb') as fp:pickle.dump(openset_dataset_eval_dicts, fp)
+    # with open(save_path+'openset_outlier_probs_dict', 'wb') as fp:pickle.dump(openset_outlier_probs_dict, fp)
+    # with open(save_path+'openset_classification_dict', 'wb') as fp:pickle.dump(openset_classification_dict, fp)
+    # with open(save_path+'openset_entropy_classification_dict', 'wb') as fp:pickle.dump(openset_entropy_classification_dict, fp)
     # print outlier rejection values for all unseen unknown datasets
+    for other_data_name, other_data_dict in openset_classification_dict.items():
+        print(other_data_name + ' EVT outlier percentage: ' +
+              str(other_data_dict["outlier_percentage"][entropy_threshold_index]))
+
+    for other_data_name, other_data_dict in openset_entropy_classification_dict.items():
+        print(other_data_name + ' entropy outlier percentage: ' +
+              str(other_data_dict["entropy_outlier_percentage"][entropy_threshold_index]))
+
+    
+    # with open(save_path+'openset_dataset_eval_dicts', 'wb') as fp:pickle.dump(openset_dataset_eval_dicts, fp)
+    # with open(save_path+'openset_outlier_probs_dict', 'wb') as fp:pickle.dump(openset_outlier_probs_dict, fp)
+    # with open(save_path+'openset_classification_dict', 'wb') as fp:pickle.dump(openset_classification_dict, fp)
+    # with open(save_path+'openset_entropy_classification_dict', 'wb') as fp:pickle.dump(openset_entropy_classification_dict, fp)
+    # # print outlier rejection values for all unseen unknown datasets
     for other_data_name, other_data_dict in openset_classification_dict.items():
         print(other_data_name + ' EVT outlier percentage: ' +
               str(other_data_dict["outlier_percentage"][entropy_threshold_index]))
@@ -750,7 +905,7 @@ def Weibull_Sampler_all_datasets(model,train_loader,test_dataloader,val_loader,u
                                      args.dataset + ' (trained)',
                                      dataset_entropy_classification_correct["entropy_thresholds"], save_path)
 
-    return topk
+    return topk[0:args.budget-sumup],collect_other
 
 
 
@@ -801,7 +956,7 @@ def eval_var_openset_all_datasets(model, data_loader, num_classes, device,args, 
     # evaluate the encoder and classifier and store results in corresponding lists according to predicted class.
     # Prediction mean confidence and uncertainty is also obtained if amount of latent samples is greater than one.
     with torch.no_grad():
-        for inputs, classes in data_loader:
+        for inputs, classes,indexes in data_loader:
             inputs, classes = inputs.to(device), classes.to(device)
 
             out_samples = torch.zeros(model_var_samples, latent_var_samples, inputs.size(0), num_classes).to(device)
@@ -845,7 +1000,7 @@ def eval_var_openset_all_datasets(model, data_loader, num_classes, device,args, 
                 encoded_mus[idx].append(encoded_mu[i].data)
                 encoded_sigmas[idx].append(encoded_std[i].data)
                 zs[idx].append(zs_mean[i].data)
-                #collect_indexes_per_class[idx].append(indexes[i].item())
+                collect_indexes_per_class[idx].append(100000+indexes[i].item())
 
     # stack latent activations into a tensor
     for i in range(len(encoded_mus)):
@@ -876,7 +1031,7 @@ def eval_var_openset_all_datasets(model, data_loader, num_classes, device,args, 
     _, querry_indices = torch.topk(all_preds_, int(args.budget))
     #querry_pool_indices = np.asarray(all_indices)[querry_indices]
 
-    print("the output of querry indicssis",querry_indices)
+    #print("the output of querry indicssis",querry_indices)
     # Return a dictionary of stored values.
     # with open('outfile', 'wb') as fp:pickle.dump(d, fp)
     return {"encoded_mus": encoded_mus, "encoded_sigmas": encoded_sigmas,

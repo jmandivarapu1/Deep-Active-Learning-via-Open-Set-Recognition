@@ -45,7 +45,8 @@ def train(Dataset,validate,test_dataloader, task_model, criterion, epoch, visdom
     #print("came to regular train")
 
     # Create instances to accumulate losses etc.
-    optim_task_model = optim.SGD(task_model.parameters(), lr=0.001, momentum=0.9)
+    optim_task_model = optim.Adam(task_model.parameters(), lr=0.001,  weight_decay=args.weight_decay)#momentum=0.9)
+    print(optim_task_model)
     task_model.train()
     if args.cuda:
         print("came to cud")
@@ -64,7 +65,7 @@ def train(Dataset,validate,test_dataloader, task_model, criterion, epoch, visdom
     acc=0
     # train
     #model.train()
-    for iter_count in range(0,15000):
+    for iter_count in range(0,25000):
         inp, target = next(labeled_data)
     #for i, (inp, target,_) in enumerate(Dataset):
         if args.cuda:
@@ -104,10 +105,12 @@ def train(Dataset,validate,test_dataloader, task_model, criterion, epoch, visdom
                    epoch+1, iter_count, len(Dataset), batch_time=batch_time,
                    data_time=data_time, loss=losses, top1=top1))
             plot_visdom(visdom,iterations,loss.item(),str(int(split*100))+'_loss','loss')
-            best_model = copy.deepcopy(task_model)
-            best_model = best_model.cuda()
-            acc=testset_Accuracy(best_model,test_dataloader,args)
+            task_model.eval()
+            # best_model = copy.deepcopy(task_model)
+            # best_model = best_model.cuda()
+            acc=testset_Accuracy(task_model,test_dataloader,args)
             plot_visdom(visdom,iterations,acc,str(int(split*100))+'_acc','acc')
+            task_model.train()
         iterations=iterations+1
     # ## TensorBoard summary logging
     # writer.add_scalar('training/train_precision@1', top1.avg, epoch)
@@ -141,9 +144,10 @@ def train_var(Dataset,validate,test_dataloader, model, criterion, epoch, visdom,
     #     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # else:
     #     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    #optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9) #Actual one
+    #optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9) #Actual one
+    print("optimizer is",optimizer)
     #, weight_decay=args.weight_decay)
     labeled_data = read_data(Dataset)
     if args.cuda:
@@ -368,9 +372,10 @@ def train_var_joint(Dataset,validate,test_dataloader, model, criterion, epoch, v
         args (dict): Dictionary of (command line) arguments.
             Needs to contain print_freq (int), denoising_noise_value (float) and var_beta (float).
     """
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    #optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer=optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     #optimizer = optim.Adam(model.parameters(), lr=0.001, momentum=0.9)
+    print("optimizer is",optimizer)
     model.train()
     labeled_data = read_data(Dataset)
     if args.cuda:

@@ -43,6 +43,20 @@ def cifar100_transformer():
         #                         std=[0.5, 0.5, 0.5]),
        ])
 
+
+def kmnist_transformer():
+    return torchvision.transforms.Compose([
+          transforms.Resize(size=(32, 32)),
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.repeat(3, 1, 1)),
+        #    transforms.RandomCrop(32, padding=4),
+        #    torchvision.transforms.RandomHorizontalFlip(),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        #    transforms.Normalize(mean=[0.5, 0.5, 0.5,],
+        #                         std=[0.5, 0.5, 0.5]),
+       ])
+
+
 class CIFAR10(Dataset):
     def __init__(self, path):
         self.cifar10 = datasets.CIFAR10(root=path,
@@ -81,6 +95,28 @@ class CIFAR100(Dataset):
 
     def __len__(self):
         return len(self.cifar100)
+
+
+class KMNIST(Dataset):
+    def __init__(self, path):
+        self.KMNIST = datasets.KMNIST(root='/mnt/iscsi/data/Jay/crossDatasets/KMNIST/',
+                                        download=True,
+                                        train=True,
+                                        transform=kmnist_transformer())
+
+    def __getitem__(self, index):
+        if isinstance(index, numpy.float64):
+            index = index.astype(numpy.int64)
+
+        data, target = self.KMNIST[index]
+
+        # Your transformations here (or set it in CIFAR10)
+
+        return data, target, index
+
+    def __len__(self):
+        return len(self.KMNIST)
+
 
 class Caltech256(Dataset):
     def __init__(self, path):
