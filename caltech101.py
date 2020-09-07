@@ -32,7 +32,6 @@ from collections import OrderedDict
 
 # Execution flags
 
-
 def create_flders(splits,args):
     Flags = {}
     Flags['Dir']='task_net_models/'
@@ -82,18 +81,9 @@ def cifar100_transformer():
             #                     std=[0.5, 0.5, 0.5]),
         ])
 
-def MNIST_transformer():
-    return transforms.Compose([
-            transforms.Resize((32, 32)),
-            transforms.ToTensor(),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            # transforms.Normalize(mean=[0.5, 0.5, 0.5,],
-            #                     std=[0.5, 0.5, 0.5]),
-        ])
-
 def caltech_transformer():
     return transforms.Compose([
-         transforms.Resize(size=256),
+        transforms.Resize(size=256),
         transforms.CenterCrop(size=224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -161,28 +151,52 @@ def main(args):
     
     # vis.delete_env(environment) #If you want to clear all the old plots for this python Experiments.Resets the Environment
     # vis = visdom.Visdom(env=environment)
-    if args.train_var:
-        if args.joint:
-            print("came to the Joint Training")
-            from lib.Training.train import train_var_joint as train
-            from lib.Training.validate import validate_var_joint as validate
-            from lib.Training.loss_functions import var_loss_function_joint as criterion
+    if args.both_gpu:
+        if args.train_var:
+            if args.joint:
+                print("came to the Joint Training")
+                from Dataparalle_lib.Training.train import train_var_joint_new as train
+                from Dataparalle_lib.Training.validate import validate_var_joint as validate
+                from Dataparalle_lib.Training.loss_functions import var_loss_function_joint as criterion
+            else:
+                print("came to the expected loop")
+                from Dataparalle_lib.Training.train import train_var_new as train
+                from Dataparalle_lib.Training.validate import validate_var as validate
+                from Dataparalle_lib.Training.loss_functions import var_loss_function as criterion
+            from Dataparalle_lib.Training.evaluate import eval_var_dataset as evaluate
         else:
-            print("came to the expected loop")
-            from lib.Training.train import train_var as train
-            from lib.Training.validate import validate_var as validate
-            from lib.Training.loss_functions import var_loss_function as criterion
-        from lib.Training.evaluate import eval_var_dataset as evaluate
+            if args.joint:
+                from Dataparalle_lib.Training.train import train_joint as train
+                from Dataparalle_lib.Training.validate import validate_joint as validate
+                from Dataparalle_lib.Training.loss_functions import loss_function_joint as criterion
+            else:
+                from Dataparalle_lib.Training.train import train as train
+                from Dataparalle_lib.Training.validate import validate as validate
+                from Dataparalle_lib.Training.loss_functions import loss_function as criterion
+        from Dataparalle_lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
     else:
-        if args.joint:
-            from lib.Training.train import train_joint as train
-            from lib.Training.validate import validate_joint as validate
-            from lib.Training.loss_functions import loss_function_joint as criterion
+        if args.train_var:
+            if args.joint:
+                print("came to the Joint Training")
+                from lib.Training.train import train_var_joint as train
+                from lib.Training.validate import validate_var_joint as validate
+                from lib.Training.loss_functions import var_loss_function_joint as criterion
+            else:
+                print("came to the expected loop")
+                from lib.Training.train import train_var as train
+                from lib.Training.validate import validate_var as validate
+                from lib.Training.loss_functions import var_loss_function as criterion
+            from lib.Training.evaluate import eval_var_dataset as evaluate
         else:
-            from lib.Training.train import train as train
-            from lib.Training.validate import validate as validate
-            from lib.Training.loss_functions import loss_function as criterion
-    from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
+            if args.joint:
+                from lib.Training.train import train_joint as train
+                from lib.Training.validate import validate_joint as validate
+                from lib.Training.loss_functions import loss_function_joint as criterion
+            else:
+                from lib.Training.train import train as train
+                from lib.Training.validate import validate as validate
+                from lib.Training.loss_functions import loss_function as criterion
+        from lib.OpenSet.meta_recognition import Weibull_Sampler as WieBullSampler
 
 
 
@@ -209,18 +223,7 @@ def main(args):
         args.budget = 2500
         args.initial_budget = 5000
         args.num_classes = 100
-    elif args.dataset == 'MNIST':
-        test_dataloader = data.DataLoader(
-                datasets.MNIST(args.data_path, download=True, transform=MNIST_transformer(), train=False),
-             batch_size=args.batch_size, drop_last=False)
 
-        train_dataset = MNIST(args.data_path)
-        print("=========MNIST 100===============")
-        args.num_val = 5000
-        args.num_images = 50000
-        args.budget = 1000
-        args.initial_budget = 100
-        args.num_classes = 10
     elif args.dataset == 'imagenet':
         test_dataloader = data.DataLoader(
                 datasets.ImageFolder(args.data_path, transform=imagenet_transformer()),
@@ -233,16 +236,17 @@ def main(args):
         args.budget = 64060
         args.initial_budget = 128120
         args.num_classes = 1000
-    elif args.dataset == 'caltech256':
+    elif args.dataset == 'caltech101':
         print("path os fata is",args.data_path)
-        test_dataloader = data.DataLoader(datasets.ImageFolder(args.data_path+'test/',transform=caltech_transformer()),drop_last=True, batch_size=args.test_batch_size)
-        train_dataset = Caltech256(args.data_path+'train/')
-        print(len(train_dataset),len(test_dataloader))
-        args.num_val = 2700
-        args.num_images = 26683
-        args.budget = 1530
-        args.initial_budget = 3060
-        args.num_classes = 256
+        # test_dataloader = data.DataLoader(datasets.ImageFolder(args.data_path+'test/',transform=caltech_transformer()),drop_last=True, batch_size=args.test_batch_size)
+        total_dataset = Caltech256(args.data_path)
+        print("Total Length of dataset is",len(total_dataset))
+        args.num_val = 723
+        args.test_images=1446
+        args.num_images = 8677
+        args.budget = 350
+        args.initial_budget = 723
+        args.num_classes = 101
     elif args.dataset == 'Cityscapes':
         test_dataloader = data.DataLoader(
                 datasets.Cityscapes(args.data_path,download=True, transform=imagenet_transformer()),
@@ -263,44 +267,48 @@ def main(args):
         random.seed(30)
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Config: %s" % config_to_str(args))
-
-    '''
-    Finished VAL INDEXES
-    '''
+   
     all_indices = set(np.arange(args.num_images))
+
+    #Sample and Remove Validation Images
     val_indices = random.sample(all_indices, args.num_val)
     all_indices = np.setdiff1d(list(all_indices), val_indices)
 
+    #Sample and Remove Test Images
+    test_indices = random.sample(list(all_indices), args.test_images)
+    all_indices = np.setdiff1d(list(all_indices), test_indices)
 
-    '''
-    Finished INITIAL TRAIN INDEXES
-    '''
+    print("Leght of left indi",len(all_indices))
+    #Sample and Remove Training/Intial Budget Images
     initial_indices = random.sample(list(all_indices), args.initial_budget)
 
-
-    '''
-    SAMPLER
-    '''
-    sampler = data.sampler.SubsetRandomSampler(initial_indices)
+    #Prepare Samplers
+    train_sampler = data.sampler.SubsetRandomSampler(initial_indices)
     val_sampler = data.sampler.SubsetRandomSampler(val_indices)
+    test_sampler = data.sampler.SubsetRandomSampler(test_indices)
+
 
     #The below lines are only for weibull distrubution which need two validation sets to pll off
     val_indices_set1=val_indices[0:int(len(val_indices)/2)]
     val_indices_set2=val_indices[int(len(val_indices)/2):]
     val_sampler_set1 = data.sampler.SubsetRandomSampler(val_indices_set1)
     val_sampler_set2 = data.sampler.SubsetRandomSampler(val_indices_set2)
-    val_dataloader_set1 = data.DataLoader(train_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
-    val_dataloader_set2 = data.DataLoader(train_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
+    val_dataloader_set1 = data.DataLoader(total_dataset, sampler=val_sampler_set1,batch_size=args.batch_size, drop_last=False)
+    val_dataloader_set2 = data.DataLoader(total_dataset, sampler=val_sampler_set2,batch_size=args.batch_size, drop_last=False)
 
     # dataset with labels available
-    querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, batch_size=args.batch_size, drop_last=False)
-    val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
+    querry_dataloader = data.DataLoader(total_dataset, sampler=train_sampler, batch_size=args.batch_size, drop_last=True)
+    test_dataloader = data.DataLoader(total_dataset, sampler=test_sampler,batch_size=args.batch_size, drop_last=True)
+    val_dataloader = data.DataLoader(total_dataset, sampler=val_sampler,batch_size=args.batch_size, drop_last=False)
 
-    print("length of the Querry loader",len(querry_dataloader)*args.batch_size)
+
+    print("length of the Train/Querry loader",len(querry_dataloader)*args.batch_size)
     print("length of the Test loader",len(test_dataloader)*args.batch_size)
     print("length of the Validation loader",len(val_dataloader)*args.batch_size)
-    print("length of the Validation loader ",len(val_dataloader_set1)*args.batch_size) 
-    print("length of the Validation loader",len(val_dataloader_set2)*args.batch_size)  
+    print("length of the Validation loader I",len(val_dataloader_set1)*args.batch_size) 
+    print("length of the Validation loader II",len(val_dataloader_set2)*args.batch_size)  
+    #sys.exit()
+
     args.cuda = torch.cuda.is_available()
 
     solver = Solver(args, test_dataloader,val_dataloader_set1,val_dataloader_set2)
@@ -313,8 +321,10 @@ def main(args):
 
     Flags=create_flders(splits,args)
     print(Flags)
+
     
-   
+    print(collections.Counter(querry_dataloader.dataset.caltech256.targets))
+    #sys.exit()
 
     for split in splits:
         num_colors=3
@@ -326,9 +336,9 @@ def main(args):
         lr_change=[150,250]
         #plot_per_class(vis,querry_dataloader,True,split)
         #task_model=model.WRN(args.device,args.num_classes, num_colors, args)
-        if args.dataset == 'caltech256':
-            #task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
-            task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
+        if args.dataset == 'caltech101':
+            print("CAME TO DATASET",args.dataset)
+            task_model=model.WRN_caltech_actual(args.device,args.num_classes, num_colors, args)#models.vgg16(pretrained=True)#
             # for param in task_model.parameters():
             #     param.requires_grad = False
             #     # n_inputs = 25088#task_model.classifier[6].in_features
@@ -338,8 +348,6 @@ def main(args):
             #         nn.Linear(256, 256), nn.LogSoftmax(dim=1))
         elif args.dataset == 'cifar100':
             task_model=model.WRN_CIFAR100_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
-        elif args.dataset=='MNIST':
-            task_model=model.MNIST_LENET(args.device,args.num_classes, 1, args)
         else:
             task_model=model.WRN_actual(args.device,args.num_classes, num_colors, args)#vgg.vgg16_bn(num_classes=args.num_classes)#
         print("mode",task_model)
@@ -354,8 +362,7 @@ def main(args):
         # WeightInitializer.init_model(task_model)
         unlabeled_indices = np.setdiff1d(list(all_indices), current_indices)
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
-        unlabeled_dataloader = data.DataLoader(train_dataset, 
-                sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
+        unlabeled_dataloader = data.DataLoader(total_dataset,sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False)
 
         #works only for cifar10
         if args.dataset =='cifar10':
@@ -363,7 +370,7 @@ def main(args):
         elif args.dataset =='cifar100':
             all_saved_indicies=list(unlabeled_dataloader.dataset.cifar100.targets)
 
-        print("length od the Unlabled loader",len(unlabeled_dataloader)*128)  
+        print("length od the Unlabled loader",len(unlabeled_dataloader)*args.batch_size)  
         best_acc,Best_Model,best_optimum=train(querry_dataloader,
                     validate,
                     test_dataloader,
@@ -423,12 +430,12 @@ def main(args):
         print("All accuracies until now",accuracies)
         GPUs = GPU.getGPUs()
         for gpu in GPUs:print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
-        #with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
+        with open(save_path+'acc_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(accuracies, fp)
         print('Final accuracy with {}% of data is: {:.2f}'.format(int(split*100), best_acc))
         sampled_indices=WieBullSampler(Best_Model,querry_dataloader,test_dataloader,val_dataloader,unlabeled_dataloader,val_dataloader_set1,val_dataloader_set2,evaluate,args,save_path)
-        #with open('sampled_indices_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(sampled_indices, fp)
-        #with open('all_saved_indicies_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(all_saved_indicies, fp)
-        #plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
+        with open('sampled_indices_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(sampled_indices, fp)
+        with open('all_saved_indicies_'+str(int(len(accuracies))), 'wb') as fp:pickle.dump(all_saved_indicies, fp)
+        plot_sampled_images_class(vis,all_saved_indicies,split,sampled_indices)
         current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler, 
@@ -444,9 +451,3 @@ if __name__ == '__main__':
     args = EasyDict(config)
     main(args)
 
-
-
-
-# 82.69999999999999, 88.34, 90.52, 93.44, 94.26, 94.8, 96.11 -MNIST_100
-# 81.2, 89.96, 94.21000000000001, 95.49, 95.93, 97.54, 97.18 -MNIST_250
-# [82.46, 95.74000000000001, 97.61, 98.45, 98.6, 98.58, 98.46000000000001 -MNIST_1000
